@@ -1,6 +1,7 @@
 package com.sdlc.sdlc.controller;
 
 
+import com.sdlc.sdlc.dto.AddOrganizationMemberRequest;
 import com.sdlc.sdlc.entity.ErrorResponse;
 import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.entity.OrganizationMember;
@@ -30,19 +31,25 @@ public class OrganizationController {
     @Autowired
     UserService userService;
 
-    @PostMapping("/{organizationName}/add-user")
-    public ResponseEntity<?> addUserToOrganization(@RequestParam String organizationName, @RequestBody User user) {
+    @PostMapping("/add-user")
+    public ResponseEntity<?> addUserToOrganization(@RequestBody AddOrganizationMemberRequest organizationMemberRequest) {
         try{
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
-            Organization organization = organizationService.checkOrganizationExists(organizationName);
+            Organization organization = organizationService.checkOrganizationExists(organizationMemberRequest.getOrganizationName());
             if(organization == null){
                 return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"),HttpStatus.FORBIDDEN);
             }
             OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName);
-            if (organizationMember.getRole().equals("ADMIN")) {
-                User userInDb = userService.findByUserName(user.getUserName()); //need to create DTO
-                organizationService.addMemberToOrganization(userInDb, "VIEWER");
+            if(organizationMember == null){
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"),HttpStatus.FORBIDDEN);
+            }
+            if (organizationMember.getRole().equals("ADMIN") || organizationMember.getRole().equals("OWNER")) {
+                User userInDb = userService.findByUserName(organizationMemberRequest.getUserName());
+                if(userInDb == null){
+                    return new ResponseEntity<>(new ErrorResponse("User doesn't exist"),HttpStatus.FORBIDDEN);
+                }
+                organizationService.addMemberToOrganization(organization, userInDb, "VIEWER");
                 return new ResponseEntity<>(HttpStatus.OK);
             }
             else{

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.sdlc.sdlc.entity.User;
 import com.sdlc.sdlc.entity.OrganizationMember;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -27,22 +28,29 @@ public class OrganizationService {
     UserRepository userRepository;
 
     public Organization createNewOrganization(Organization organization, User user) {
-        OrganizationMember member = addMemberToOrganization(user, "OWNER");
+        OrganizationMember member = addMemberToOrganization(organization, user, "OWNER");
         organization.setMembers(List.of(member));
         Organization savedOrganization = organizationRepository.save(organization);
         log.info("New organization created: {}", savedOrganization.getName());
         return savedOrganization;
     }
 
-    public OrganizationMember addMemberToOrganization(User user, String role) {
-        OrganizationMember member = new OrganizationMember();
-        member.setUser(user);
-        member.setRole(role);
-        return organizationMemberRepository.save(member);
+    public OrganizationMember addMemberToOrganization(Organization organization, User user, String role) {
+        OrganizationMember organizationMember = new OrganizationMember();
+        organizationMember.setUser(user);
+        organizationMember.setRole(role);
+        organizationMember = organizationMemberRepository.save(organizationMember);
+        if (organization.getMembers() == null) {
+            organization.setMembers(new ArrayList<>());
+        }
+        organization.getMembers().add(organizationMember);
+        organizationRepository.save(organization);
+        return organizationMember;
     }
 
     public Organization checkOrganizationExists(String organizationName) {
         try {
+            log.info("Organization name received: '{}'", organizationName);
             return organizationRepository.findByName(organizationName);
         } catch (Exception e) {
             log.error("Error checking if organization exists: {}", e.getMessage());
