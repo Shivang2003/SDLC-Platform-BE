@@ -32,4 +32,8 @@ public class UserService {
            throw new RuntimeException("Error creating user: " + e.getMessage());
        }
     }
+
+    public User findByUserName(String userName) {
+        return userRepository.findByUserName(userName);
+    }
 }
