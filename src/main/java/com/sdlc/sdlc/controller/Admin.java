@@ -1,5 +1,6 @@
 package com.sdlc.sdlc.controller;
 
+import com.sdlc.sdlc.entity.ErrorResponse;
 import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.entity.User;
 import com.sdlc.sdlc.service.OrganizationService;
@@ -29,18 +30,20 @@ public class Admin {
 
     @PostMapping("/create")
     public ResponseEntity<?> createOrganization(@RequestBody Organization organization) {
-        try{
+        try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
             User userInDb = userService.findByUserName(userName);
-            if(userInDb.getRoles().contains("ADMIN")){
-                Organization createdOrganization = organizationService.createNewOrganization(organization);
-                return new ResponseEntity<>(createdOrganization, HttpStatus.CREATED);
-            } else {
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            if (!userInDb.getRoles().contains("ADMIN")) {
+                return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
-        }
-        catch (Exception e){
+            if (organizationService.checkOrganizationExists(organization.getName()) != null) {
+                return new ResponseEntity<>(new ErrorResponse("Organization already exists"), HttpStatus.CONFLICT);
+            }
+            Organization createdOrganization = organizationService.createNewOrganization(organization, userInDb);
+            return new ResponseEntity<>(createdOrganization, HttpStatus.CREATED);
+
+        } catch (Exception e) {
             log.error("Error creating organization: ", e);
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
