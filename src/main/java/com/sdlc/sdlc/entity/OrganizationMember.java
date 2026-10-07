@@ -15,6 +15,7 @@ public class OrganizationMember {
 
     @DBRef
     private User user;
-
+    @DBRef
+    private Organization organization;
     private String role;
 }

@@ -28,24 +28,22 @@ public class OrganizationService {
     UserRepository userRepository;
 
     public Organization createNewOrganization(Organization organization, User user) {
-        OrganizationMember member = addMemberToOrganization(organization, user, "OWNER");
-        organization.setMembers(List.of(member));
         Organization savedOrganization = organizationRepository.save(organization);
+        addMemberToOrganization(savedOrganization, user, "OWNER");
         log.info("New organization created: {}", savedOrganization.getName());
         return savedOrganization;
     }
 
     public OrganizationMember addMemberToOrganization(Organization organization, User user, String role) {
+        OrganizationMember existingMember = organizationMemberRepository.findByUserAndOrganization(user, organization);
+        if (existingMember != null) {
+            throw new IllegalStateException("User is already a member of this organization");
+        }
         OrganizationMember organizationMember = new OrganizationMember();
+        organizationMember.setOrganization(organization);
         organizationMember.setUser(user);
         organizationMember.setRole(role);
-        organizationMember = organizationMemberRepository.save(organizationMember);
-        if (organization.getMembers() == null) {
-            organization.setMembers(new ArrayList<>());
-        }
-        organization.getMembers().add(organizationMember);
-        organizationRepository.save(organization);
-        return organizationMember;
+        return organizationMemberRepository.save(organizationMember);
     }
 
     public Organization checkOrganizationExists(String organizationName) {
@@ -54,16 +52,16 @@ public class OrganizationService {
             return organizationRepository.findByName(organizationName);
         } catch (Exception e) {
             log.error("Error checking if organization exists: {}", e.getMessage());
+
             return null;
         }
     }
 
-    public OrganizationMember findOrganizationMemberByUserName(String username) {
+    public OrganizationMember findOrganizationMemberByUserName(String username, Organization organization) {
         User user = userRepository.findByUserName(username);
         if (user == null) {
             return null;
         }
-        return organizationMemberRepository.findByUser(user);
+        return organizationMemberRepository.findByUserAndOrganization(user, organization);
     }
-
 }

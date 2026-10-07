@@ -8,4 +8,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface OrganizationMemberRepository extends MongoRepository<OrganizationMember, ObjectId> {
     OrganizationMember findByUser(User user);
+    OrganizationMember findByUserAndOrganization(User user, Organization organization);
 }

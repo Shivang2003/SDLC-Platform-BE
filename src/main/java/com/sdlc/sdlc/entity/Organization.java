@@ -19,8 +19,5 @@ public class Organization {
     private String description;
 
     @DBRef
-    private List<OrganizationMember> members;
-
-    @DBRef
     private List<Project> projects;
 }

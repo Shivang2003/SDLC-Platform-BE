@@ -33,32 +33,36 @@ public class OrganizationController {
 
     @PostMapping("/add-user")
     public ResponseEntity<?> addUserToOrganization(@RequestBody AddOrganizationMemberRequest organizationMemberRequest) {
-        try{
+        try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
             Organization organization = organizationService.checkOrganizationExists(organizationMemberRequest.getOrganizationName());
-            if(organization == null){
-                return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"),HttpStatus.FORBIDDEN);
+
+            if (organization == null) {
+                return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
             }
-            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName);
-            if(organizationMember == null){
-                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"),HttpStatus.FORBIDDEN);
+            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
+            if (organizationMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
             }
-            if (organizationMember.getRole().equals("ADMIN") || organizationMember.getRole().equals("OWNER")) {
-                User userInDb = userService.findByUserName(organizationMemberRequest.getUserName());
-                if(userInDb == null){
-                    return new ResponseEntity<>(new ErrorResponse("User doesn't exist"),HttpStatus.FORBIDDEN);
-                }
-                organizationService.addMemberToOrganization(organization, userInDb, "VIEWER");
-                return new ResponseEntity<>(HttpStatus.OK);
+            if (!organizationMember.getRole().equals("ADMIN") && !organizationMember.getRole().equals("OWNER")) {
+                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can add users"), HttpStatus.FORBIDDEN
+                );
             }
-            else{
-                return new ResponseEntity<>(new ErrorResponse("only ADMIN can add users"),HttpStatus.FORBIDDEN);
+
+            User userInDb = userService.findByUserName(organizationMemberRequest.getUserName());
+            if (userInDb == null) {
+                return new ResponseEntity<>(new ErrorResponse("User doesn't exist"), HttpStatus.NOT_FOUND
+                );
             }
-        }
-        catch (Exception e){
-            log.error("Error adding user to organization: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Error adding user to organization");
+            OrganizationMember addedOrganizationMember = organizationService.addMemberToOrganization(organization, userInDb, "VIEWER");
+            if(addedOrganizationMember == null){
+                return new ResponseEntity<>(new ErrorResponse("User is already a member of the organization"), HttpStatus.CONFLICT);
+            }
+            return new ResponseEntity<>(addedOrganizationMember,HttpStatus.OK);
+
+        } catch (IllegalStateException e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
         }
     }
 }
