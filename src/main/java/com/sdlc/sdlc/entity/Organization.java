@@ -18,6 +18,4 @@ public class Organization {
     private String name;
     private String description;
 
-    @DBRef
-    private List<Project> projects;
 }

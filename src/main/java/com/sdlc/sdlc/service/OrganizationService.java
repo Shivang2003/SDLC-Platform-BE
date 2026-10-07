@@ -6,13 +6,11 @@ import com.sdlc.sdlc.repository.OrganizationMemberRepository;
 import com.sdlc.sdlc.repository.OrganizationRepository;
 import com.sdlc.sdlc.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.sdlc.sdlc.entity.User;
 import com.sdlc.sdlc.entity.OrganizationMember;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 @Slf4j
@@ -46,13 +44,23 @@ public class OrganizationService {
         return organizationMemberRepository.save(organizationMember);
     }
 
-    public Organization checkOrganizationExists(String organizationName) {
+    public Organization checkOrganizationNameExists(String organizationName) {
         try {
             log.info("Organization name received: '{}'", organizationName);
             return organizationRepository.findByName(organizationName);
         } catch (Exception e) {
             log.error("Error checking if organization exists: {}", e.getMessage());
+            return null;
+        }
+    }
 
+    public Organization checkOrganizationIdExists(String organizationId) {
+        try {
+            log.info("Organization name received: '{}'", organizationId);
+            ObjectId orgId = new ObjectId(organizationId);
+            return organizationRepository.findById(orgId).orElse(null);
+        } catch (Exception e) {
+            log.error("Error checking if organization exists: {}", e.getMessage());
             return null;
         }
     }
@@ -64,4 +72,5 @@ public class OrganizationService {
         }
         return organizationMemberRepository.findByUserAndOrganization(user, organization);
     }
+
 }

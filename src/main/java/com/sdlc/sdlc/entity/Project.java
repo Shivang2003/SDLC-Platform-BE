@@ -11,13 +11,13 @@ import java.util.List;
 @Data
 @Document(collection = "projects")
 public class Project {
+
     @Id
     private ObjectId id;
 
     private String name;
     private String description;
-    private String status;
 
     @DBRef
-    private List<ProjectMember> members;
+    private Organization organization;
 }

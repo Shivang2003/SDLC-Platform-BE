@@ -37,7 +37,7 @@ public class Admin {
             if (!userInDb.getRoles().contains("ADMIN")) {
                 return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
-            if (organizationService.checkOrganizationExists(organization.getName()) != null) {
+            if (organizationService.checkOrganizationNameExists(organization.getName()) != null) {
                 return new ResponseEntity<>(new ErrorResponse("Organization already exists"), HttpStatus.CONFLICT);
             }
             Organization createdOrganization = organizationService.createNewOrganization(organization, userInDb);

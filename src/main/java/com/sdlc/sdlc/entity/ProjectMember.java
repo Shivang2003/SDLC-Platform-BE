@@ -9,11 +9,15 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Data
 @Document(collection = "project_members")
 public class ProjectMember {
+
     @Id
     private ObjectId id;
 
     @DBRef
-    private User user;
+    private OrganizationMember organizationMember;
+
+    @DBRef
+    private Project project;
 
     private String role;
 }
