@@ -1,32 +1,39 @@
 package com.sdlc.sdlc.entity;
 
+import com.sdlc.sdlc.enums.TestExecutionStatus;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
-@Data
 @Document(collection = "test_cases")
 public class TestCase {
 
     @Id
     private ObjectId id;
 
-    private String testcaseId;
+    private String key;              // TC-001
+
     private String title;
     private String description;
 
-    private List<String> steps;
-
-    private String expectedResult;
-    private String status;
+    @DBRef
+    private Project project;
 
     @DBRef
-    private DevTicket devTicket;
+    private Feature feature;
+
+    private TestExecutionStatus status;
 
     @DBRef
-    private User createdBy;
+    private ProjectMember createdBy;
+
+    private ObjectId targetVersionId;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

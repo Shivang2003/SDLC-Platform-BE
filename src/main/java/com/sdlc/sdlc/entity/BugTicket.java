@@ -1,34 +1,47 @@
 package com.sdlc.sdlc.entity;
 
+import com.sdlc.sdlc.enums.BugStatus;
+import com.sdlc.sdlc.enums.Priority;
+import com.sdlc.sdlc.enums.Severity;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Data
+import java.time.LocalDateTime;
+
 @Document(collection = "bug_tickets")
 public class BugTicket {
 
     @Id
     private ObjectId id;
 
-    private String bugId;
+    private String key;              // BUG-201
+
     private String title;
     private String description;
 
-    private String status;
-    private String priority;
+    @DBRef
+    private Project project;
+
+    private ObjectId featureId;
+    private ObjectId devTicketId;
+    private ObjectId testCaseId;
 
     @DBRef
-    private DevTicket devTicket;
+    private ProjectMember reportedBy;
 
     @DBRef
-    private TestCase testCase;
+    private ProjectMember assignee;
 
-    @DBRef
-    private User assignedTo;
+    private BugStatus status;
+    private Priority priority;
+    private Severity severity;
 
-    @DBRef
-    private User createdBy;
+    private ObjectId detectedVersionId;
+    private ObjectId fixedVersionId;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

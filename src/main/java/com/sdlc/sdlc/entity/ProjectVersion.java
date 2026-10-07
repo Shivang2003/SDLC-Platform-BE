@@ -1,7 +1,6 @@
 package com.sdlc.sdlc.entity;
 
-import com.sdlc.sdlc.enums.FeatureStatus;
-import lombok.Data;
+import com.sdlc.sdlc.enums.VersionStatus;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -9,26 +8,22 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "features")
-public class Feature {
+@Document(collection = "project_versions")
+public class ProjectVersion {
 
     @Id
     private ObjectId id;
 
-    private String key;              // FEAT-001
-    private String name;
-    private String description;
+    private String version;          // 1.0.0
+    private String name;             // Initial Release
 
     @DBRef
     private Project project;
 
-    @DBRef
-    private ProjectMember createdBy;
+    private VersionStatus status;
 
-    private FeatureStatus status;
-
-    private ObjectId targetVersionId;
+    private String description;
 
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private LocalDateTime releasedAt;
 }
