@@ -85,8 +85,7 @@ public class OrganizationController {
                 return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
             }
             if (!organizationMember.getRole().equals("ADMIN") && !organizationMember.getRole().equals("OWNER")) {
-                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can create projects"), HttpStatus.FORBIDDEN
-                );
+                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can create projects"), HttpStatus.FORBIDDEN);
             }
 
             Project existingProject = projectService.checkProjectNameExists(organization,project.getName());

@@ -3,6 +3,7 @@ package com.sdlc.sdlc.entity;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -14,6 +15,9 @@ public class Project {
 
     @Id
     private ObjectId id;
+
+    @Indexed(unique = true)
+    private String projectId;
 
     private String name;
     private String description;

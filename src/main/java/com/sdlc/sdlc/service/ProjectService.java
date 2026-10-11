@@ -21,6 +21,9 @@ public class ProjectService {
     @Autowired
     public ProjectMemberRepository projectMemberRepository;
 
+    @Autowired
+    public IdGeneratorService idGeneratorService;
+
     public Project checkProjectNameExists(Organization organization,String projectName) {
         try {
             log.info("Organization name received: '{}'", projectName);
@@ -33,6 +36,8 @@ public class ProjectService {
 
     public Project createNewProject(Organization organization, Project project, OrganizationMember organizationMember) {
         try {
+            project.setProjectId(idGeneratorService.generateSequenceId("project"));
+            //need to check project id for n ow
             project.setOrganization(organization);
             Project savedProject = projectRepository.save(project);
             addMemberToProject(organizationMember, savedProject, "ADMIN");

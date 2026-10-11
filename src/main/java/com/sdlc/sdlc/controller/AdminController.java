@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @RequestMapping("/organization")
 @Slf4j
-public class Admin {
+public class AdminController {
 
     @Autowired
     OrganizationService organizationService;
