@@ -22,6 +22,9 @@ public class UserService {
 
     public boolean createNewUser(User user) {
        try{
+           if (userRepository.findByUserName(user.getUserName()) != null) {
+               throw new RuntimeException("User already exists");
+           }
            user.setPassword(passwordEncoder.encode(user.getPassword()));
            user.setRoles(Arrays.asList("USER"));
            userRepository.save(user);

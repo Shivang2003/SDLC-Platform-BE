@@ -34,9 +34,18 @@ public class ProjectService {
         }
     }
 
+    public Project findProjectById(String projectId) {
+        try {
+            return projectRepository.findByProjectId(projectId);
+        } catch (Exception e) {
+            log.error("Error finding project by ID: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
     public Project createNewProject(Organization organization, Project project, OrganizationMember organizationMember) {
         try {
-            project.setProjectId(idGeneratorService.generateSequenceId("project"));
+            project.setProjectId(idGeneratorService.generateSequenceId("project", "PRJ"));
             //need to check project id for n ow
             project.setOrganization(organization);
             Project savedProject = projectRepository.save(project);
@@ -71,4 +80,6 @@ public class ProjectService {
             return null;
         }
     }
+
+
 }

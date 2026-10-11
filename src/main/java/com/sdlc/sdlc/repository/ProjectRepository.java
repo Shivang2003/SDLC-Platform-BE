@@ -8,4 +8,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface ProjectRepository extends MongoRepository<Project, ObjectId> {
     Project findByNameAndOrganization(String name, Organization organization);
+    Project findByProjectId(String projectId);
 }

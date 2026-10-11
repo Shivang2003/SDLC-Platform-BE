@@ -15,7 +15,7 @@ public class IdGeneratorService {
 
     private final MongoTemplate mongoTemplate;
 
-    public String generateSequenceId(String entity) {
+    public String generateSequenceId(String entity, String prefix) {
         Query query = new Query(Criteria.where("_id").is(entity));
 
         Update update = new Update().inc("sequence", 1);
@@ -31,6 +31,6 @@ public class IdGeneratorService {
                 Counter.class
         );
 
-        return "PRJ-" + counter.getSequence();
+        return prefix + "-" + counter.getSequence();
     }
 }
