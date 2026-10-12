@@ -6,4 +6,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 public interface FeatureRepositroy extends MongoRepository<Feature, ObjectId> {
     Feature findByNameAndProject(String name, Project project);
+    Feature findByFeatureId(String featureId);
 }

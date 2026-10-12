@@ -1,7 +1,7 @@
 package com.sdlc.sdlc.controller;
 
 import com.sdlc.sdlc.entity.*;
-import com.sdlc.sdlc.repository.ProjectRepository;
+import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.ProjectService;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +12,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Set;
 
 @Controller
 @RequestMapping("/project")
@@ -29,7 +31,7 @@ public class ProjectController {
         try{
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
-            ProjectMember projectMember = featureService.validateFeatureCreationAccess(projectId, userName);
+            ProjectMember projectMember = featureService.validateFeatureEditAccess(projectId, userName, Set.of(ProjectRoles.VIEWER));
             if(projectMember == null) {
                 return new ResponseEntity<>(new ErrorResponse("User is not a member of the project"), HttpStatus.FORBIDDEN);
             }
@@ -37,7 +39,7 @@ public class ProjectController {
             if (projectInDb == null) {
                 return new ResponseEntity<>(new ErrorResponse("Project doesn't exist"), HttpStatus.NOT_FOUND);
             }
-            Feature checkFeature = featureService.checkIfFeatureExists(feature.getName(), projectInDb);
+            Feature checkFeature = featureService.checkIfFeatureNameExists(feature.getName(), projectInDb);
             if(checkFeature != null){
                 return new ResponseEntity<>(new ErrorResponse("Feature already exists"), HttpStatus.CONFLICT);
             }

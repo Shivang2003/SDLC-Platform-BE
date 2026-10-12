@@ -4,6 +4,7 @@ import com.sdlc.sdlc.entity.Feature;
 import com.sdlc.sdlc.entity.Project;
 import com.sdlc.sdlc.entity.ProjectMember;
 import com.sdlc.sdlc.enums.FeatureStatus;
+import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.repository.FeatureRepositroy;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.repository.ProjectRepository;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -33,9 +35,9 @@ public class FeatureService {
     @Autowired
     IdGeneratorService idGeneratorService;
 
-    public ProjectMember validateFeatureCreationAccess(String projectId, String userName) {
+    public ProjectMember validateFeatureEditAccess(String projectId, String userName, Set<ProjectRoles> restrictedRoles) {
         Project project = projectRepository.findByProjectId(projectId);
-        if(project == null) {
+        if (project == null) {
             return null;
         }
         List<ProjectMember> members = projectMemberRepository.findByProject_Id(project.getId());
@@ -47,13 +49,15 @@ public class FeatureService {
                 .findFirst()
                 .orElseThrow(() -> new AccessDeniedException("You are not a member of this project"));
 
-        if ("VIEWER".equalsIgnoreCase(member.getRole())) {
-            throw new AccessDeniedException("Viewers cannot create features");
+        ProjectRoles userRole = ProjectRoles.valueOf(member.getRole());
+        if (restrictedRoles.contains(userRole)) {
+            throw new AccessDeniedException(
+                    "Your role " + userRole + " does not have permission to perform this action");
         }
         return member;
     }
 
-    public Feature checkIfFeatureExists(String Name, Project project){
+    public Feature checkIfFeatureNameExists(String Name, Project project){
         try{
             Feature feature = featureRepository.findByNameAndProject(Name, project);
             return feature;
@@ -61,6 +65,17 @@ public class FeatureService {
         catch (Exception e){
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error checking if feature exists", e);
         }
+    }
+
+    public Feature checkIfFeatureIdExists(String featureId){
+        try{
+            Feature feature = featureRepository.findByFeatureId(featureId);
+            return feature;
+        }
+        catch (Exception e){
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error checking if feature exists", e);
+        }
+
     }
 
     public Feature createNewFeature(Feature feature, Project project, ProjectMember createdBy){

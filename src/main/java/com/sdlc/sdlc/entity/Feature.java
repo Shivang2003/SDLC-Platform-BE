@@ -17,7 +17,9 @@ public class Feature {
     @Id
     private ObjectId id;
 
-    private String key;              // FEAT-001
+    @Indexed(unique = true)
+    private String key;// FEAT-001
+
     private String name;
     private String description;
 
