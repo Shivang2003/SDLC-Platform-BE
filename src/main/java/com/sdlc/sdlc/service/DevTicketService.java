@@ -29,7 +29,7 @@ public class DevTicketService {
 
     public DevTicket checkIfDevTicketNameExists(String name, Feature feature){
         try{
-            DevTicket devTicket = devTicketRepository.findByNameAndFeature(name, feature);
+            DevTicket devTicket = devTicketRepository.findByTitleAndFeature(name, feature);
             return devTicket;
         }
         catch (Exception e){

@@ -9,5 +9,5 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DevTicketRepository extends MongoRepository<DevTicket, ObjectId> {
-    DevTicket findByNameAndFeature(String name, Feature feature);
+    DevTicket findByTitleAndFeature(String title, Feature feature);
 }
