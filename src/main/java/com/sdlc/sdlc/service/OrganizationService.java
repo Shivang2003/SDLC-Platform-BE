@@ -25,7 +25,11 @@ public class OrganizationService {
     @Autowired
     UserRepository userRepository;
 
+    @Autowired
+    IdGeneratorService idGeneratorService;
+
     public Organization createNewOrganization(Organization organization, User user) {
+        organization.setOrganizationId(idGeneratorService.generateSequenceId("organization", "ORG"));
         Organization savedOrganization = organizationRepository.save(organization);
         addMemberToOrganization(savedOrganization, user, "OWNER");
         log.info("New organization created: {}", savedOrganization.getName());
@@ -56,9 +60,8 @@ public class OrganizationService {
 
     public Organization checkOrganizationIdExists(String organizationId) {
         try {
-            log.info("Organization name received: '{}'", organizationId);
-            ObjectId orgId = new ObjectId(organizationId);
-            return organizationRepository.findById(orgId).orElse(null);
+//            ObjectId orgId = new ObjectId(organizationId);
+            return organizationRepository.findByOrganizationId(organizationId);
         } catch (Exception e) {
             log.error("Error checking if organization exists: {}", e.getMessage());
             return null;

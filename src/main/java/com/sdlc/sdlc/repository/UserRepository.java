@@ -8,4 +8,5 @@ import java.io.ObjectInput;
 
 public interface UserRepository extends MongoRepository<User, ObjectId> {
     User findByUserName(String userName);
+    User findByEmail(String email);
 }

@@ -25,6 +25,9 @@ public class UserService {
            if (userRepository.findByUserName(user.getUserName()) != null) {
                throw new RuntimeException("User already exists");
            }
+           if(userRepository.findByEmail(user.getEmail()) != null){
+               throw new RuntimeException("Email already in use");
+           }
            user.setPassword(passwordEncoder.encode(user.getPassword()));
            user.setRoles(Arrays.asList("USER"));
            userRepository.save(user);

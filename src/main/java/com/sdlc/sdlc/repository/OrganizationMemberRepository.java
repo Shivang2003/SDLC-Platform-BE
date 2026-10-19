@@ -6,7 +6,9 @@ import com.sdlc.sdlc.entity.User;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
+
 public interface OrganizationMemberRepository extends MongoRepository<OrganizationMember, ObjectId> {
-    OrganizationMember findByUser(User user);
     OrganizationMember findByUserAndOrganization(User user, Organization organization);
+    List<OrganizationMember> findByUser(User user);
 }
