@@ -3,6 +3,7 @@ package com.sdlc.sdlc.controller;
 import com.sdlc.sdlc.dto.AddProjectMemberRequest;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
+import com.sdlc.sdlc.repository.FeatureRepositroy;
 import com.sdlc.sdlc.repository.OrganizationMemberRepository;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.repository.ProjectRepository;
@@ -13,10 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+import com.sdlc.sdlc.dto.FeatureSummaryResponse;
 
 import java.util.List;
 import java.util.Set;
@@ -44,6 +47,9 @@ public class ProjectController {
     @Autowired
     ProjectRepository projectRepository;
 
+    @Autowired
+    FeatureRepositroy featureRepository;
+
     @PostMapping("/{projectId}/create-feature")
     public ResponseEntity<?> createFeature(@PathVariable String projectId, @RequestBody Feature feature) {
         try{
@@ -68,6 +74,48 @@ public class ProjectController {
         catch (Exception e) {
             log.error("Error creating feature: ", e);
             return ResponseEntity.badRequest().body("Error creating feature");
+        }
+    }
+
+    @GetMapping("/{projectId}/features")
+    public ResponseEntity<?> getAllFeatures(@PathVariable String projectId) {
+
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String currentUserName = authentication.getName();
+
+        Project project = projectRepository.findByProjectId(projectId);
+
+        if (project == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Project not found");
+        }
+
+        try {
+            featureService.validateFeatureEditAccess(
+                    projectId,
+                    currentUserName,
+                    Set.of(ProjectRoles.VIEWER)
+            );
+
+            List<Feature> features = featureRepository.findByProject(project);
+
+            List<FeatureSummaryResponse> response = features.stream()
+                    .map(feature -> new FeatureSummaryResponse(
+                            feature.getFeatureId(),
+                            feature.getName(),
+                            feature.getDescription()
+                    ))
+                    .toList();
+
+            if(response.isEmpty()){
+                return new ResponseEntity<>(new ErrorResponse("no features available"),HttpStatus.FORBIDDEN);
+            }
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        } catch (AccessDeniedException e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.FORBIDDEN);
         }
     }
 
