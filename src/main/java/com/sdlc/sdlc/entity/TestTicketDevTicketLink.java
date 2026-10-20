@@ -1,19 +1,21 @@
 package com.sdlc.sdlc.entity;
 
+import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "test_case_dev_ticket_links")
-public class TestCaseDevTicketLink {
+@Data
+@Document(collection = "test_ticket_dev_ticket_links")
+public class TestTicketDevTicketLink {
 
     @Id
     private ObjectId id;
 
-    private ObjectId testCaseId;
-    private ObjectId devTicketId;
+    private String testCaseId;
+    private String devTicketId;
 
     private LocalDateTime createdAt;
 }

@@ -1,5 +1,7 @@
 package com.sdlc.sdlc.entity;
 
+import com.sdlc.sdlc.enums.Priority;
+import com.sdlc.sdlc.enums.TestCaseStatus;
 import com.sdlc.sdlc.enums.TestExecutionStatus;
 import lombok.Data;
 import org.bson.types.ObjectId;
@@ -8,15 +10,19 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Document(collection = "test_cases")
-public class TestCase {
+@Data
+@Document(collection = "test_ticket_revisions")
+public class TestTicketRevision {
 
     @Id
     private ObjectId id;
 
-    private String key;              // TC-001
+    private String ticketKey;
+    private Integer revisionNumber;
+
+    @DBRef
+    private TestTicket testTicket;
 
     private String title;
     private String description;
@@ -27,13 +33,18 @@ public class TestCase {
     @DBRef
     private Feature feature;
 
-    private TestExecutionStatus status;
+    private TestCaseStatus testCaseStatus;
+    private TestExecutionStatus executionStatus;
 
     @DBRef
     private ProjectMember createdBy;
 
     private ObjectId targetVersionId;
 
+    private Priority priority;
+
+    @DBRef
+    private ProjectMember changedBy;
+
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
 }

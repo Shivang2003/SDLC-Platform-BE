@@ -37,6 +37,16 @@ public class DevTicketService {
         }
     }
 
+    public DevTicket checkIfDevTicketKeyExists(String devTicketId){
+        try{
+            DevTicket devTicket = devTicketRepository.findByKey(devTicketId);
+            return devTicket;
+        }
+        catch (Exception e){
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error checking if feature exists", e);
+        }
+    }
+
     public DevTicket createDevTicket(DevTicket devTicket, Feature feature, ProjectMember createdBy) {
 
         try{
