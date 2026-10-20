@@ -3,6 +3,7 @@ package com.sdlc.sdlc.controller;
 
 import com.sdlc.sdlc.dto.AddOrganizationMemberRequest;
 import com.sdlc.sdlc.entity.*;
+import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.service.OrganizationService;
 import com.sdlc.sdlc.service.ProjectService;
 import com.sdlc.sdlc.service.UserService;
@@ -14,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Controller
 @RequestMapping("/organization")
@@ -29,12 +32,15 @@ public class OrganizationController {
     @Autowired
     ProjectService projectService;
 
+    @Autowired
+    ProjectMemberRepository projectMemberRepository;
+
     @PostMapping("/{organizationId}/add-member")
-    public ResponseEntity<?> addUserToOrganization(@RequestParam String organizationId,@RequestBody AddOrganizationMemberRequest organizationMemberRequest) {
+    public ResponseEntity<?> addUserToOrganization(@PathVariable String organizationId,@RequestBody AddOrganizationMemberRequest organizationMemberRequest) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
-            Organization organization = organizationService.checkOrganizationNameExists(organizationMemberRequest.getOrganizationName());
+            Organization organization = organizationService.checkOrganizationIdExists(organizationId);
 
             if (organization == null) {
                 return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
@@ -64,12 +70,34 @@ public class OrganizationController {
         }
     }
 
-//    @GetMapping("/{organizationId}/projects")
-//    public ResponseEntity<?> getProjectsOfOrganization(@PathVariable String organizationId) {
-//        try{
-//
-//        }
-//    }
+    @GetMapping("/{organizationId}/projects")
+    public ResponseEntity<?> getProjectsOfOrganization(@PathVariable String organizationId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+
+            Organization organization = organizationService.checkOrganizationIdExists(organizationId);
+            if (organization == null) {
+                return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
+            }
+
+            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
+            if (organizationMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
+            }
+            List<ProjectMember> projectMembers = projectMemberRepository.findByOrganizationMember(organizationMember);
+//            List<ProjectMember> projectMembers = projectMemberRepository.findByOrganizationMemberAndProject_Organization(organizationMember, organization);
+            List<Project> projects = projectMembers.stream().map(ProjectMember::getProject).toList();
+
+            if(projects.isEmpty()){
+                return new ResponseEntity<>(new ErrorResponse("No project found"), HttpStatus.NOT_FOUND);
+            }
+            return new ResponseEntity<>(projects, HttpStatus.OK);
+
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
+        }
+    }
     @PostMapping("/{organizationId}/create-project")
     public ResponseEntity<?> createProjectInOrganization(@PathVariable String organizationId, @RequestBody Project project) {
         try {

@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class AddOrganizationMemberRequest {
-    String organizationName;
+    String orgId;
     String userName;
 }

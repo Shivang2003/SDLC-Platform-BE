@@ -57,7 +57,6 @@ public class ProjectService {
         }
     }
     public ProjectMember addMemberToProject(OrganizationMember organizationMember, Project project, String role) {
-        try {
             if (!organizationMember.getOrganization().getId().equals(project.getOrganization().getId())) {
 
                 throw new IllegalStateException("Organization member does not belong to the project organization"
@@ -75,10 +74,6 @@ public class ProjectService {
 
             return projectMemberRepository.save(projectMember);
 
-        } catch (Exception e) {
-            log.error("Error adding member to project: {}", e.getMessage(), e);
-            return null;
-        }
     }
 
 
