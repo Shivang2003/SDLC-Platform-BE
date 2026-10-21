@@ -1,12 +1,11 @@
 package com.sdlc.sdlc.controller;
 
 import com.sdlc.sdlc.dto.AddProjectMemberRequest;
+import com.sdlc.sdlc.dto.DevTicketBoardResponse;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
-import com.sdlc.sdlc.repository.FeatureRepositroy;
-import com.sdlc.sdlc.repository.OrganizationMemberRepository;
-import com.sdlc.sdlc.repository.ProjectMemberRepository;
-import com.sdlc.sdlc.repository.ProjectRepository;
+import com.sdlc.sdlc.enums.TicketStatus;
+import com.sdlc.sdlc.repository.*;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.ProjectService;
 import com.sdlc.sdlc.service.UserService;
@@ -49,6 +48,9 @@ public class ProjectController {
 
     @Autowired
     FeatureRepositroy featureRepository;
+
+    @Autowired
+    DevTicketRepository devTicketRepository;
 
     @PostMapping("/{projectId}/create-feature")
     public ResponseEntity<?> createFeature(@PathVariable String projectId, @RequestBody Feature feature) {
@@ -164,6 +166,42 @@ public class ProjectController {
             return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
         }
         catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{projectId}/features/{featureId}/dev-tickets")
+    public ResponseEntity<?> getAllDevTickets(@PathVariable String projectId,@PathVariable String featureId){
+        try{
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserName = authentication.getName();
+
+            Project project = projectRepository.findByProjectId(projectId);
+            if (project == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project not found");
+            }
+
+            Feature feature = featureService.checkIfFeatureIdExists(featureId);
+            if(feature == null){
+                return ResponseEntity.status(404).body("Feature doesn't exist");
+            }
+
+            List<DevTicket> devTickets = devTicketRepository.findByProjectAndFeature(project,feature);
+
+            List<DevTicketBoardResponse.DevTicketItem> ticketItems = devTickets.stream()
+                            .map(ticket -> new DevTicketBoardResponse.DevTicketItem(
+                                            ticket.getTitle(),
+                                            ticket.getPriority(),
+                                            ticket.getKey(),
+                                            ticket.getStatus(),
+                                            ticket.getUpdatedAt())).toList();
+
+            DevTicketBoardResponse response = new DevTicketBoardResponse(List.of(TicketStatus.values()), ticketItems);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        }
+        catch (Exception e){
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
