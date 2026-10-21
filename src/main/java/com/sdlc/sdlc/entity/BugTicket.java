@@ -6,41 +6,51 @@ import com.sdlc.sdlc.enums.Severity;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
+@Data
 @Document(collection = "bug_tickets")
 public class BugTicket {
 
     @Id
     private ObjectId id;
 
-    private String key;              // BUG-201
+    @Indexed(unique = true)
+    private String key;
 
     private String title;
     private String description;
 
+    private String stepsToReproduce;
+    private String expectedResult;
+    private String actualResult;
+
+    @DBRef
+    private TestTicket testCase;
+
     @DBRef
     private Project project;
 
-    private ObjectId featureId;
-    private ObjectId devTicketId;
-    private ObjectId testCaseId;
-
     @DBRef
-    private ProjectMember reportedBy;
+    private Feature feature;
 
     @DBRef
     private ProjectMember assignee;
+
+    @DBRef
+    private ProjectMember createdBy;
 
     private BugStatus status;
     private Priority priority;
     private Severity severity;
 
-    private ObjectId detectedVersionId;
-    private ObjectId fixedVersionId;
+    private ObjectId targetVersionId;
+
+    private Integer currentRevision;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

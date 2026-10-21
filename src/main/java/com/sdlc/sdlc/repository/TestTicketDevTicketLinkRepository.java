@@ -10,4 +10,5 @@ import java.util.List;
 
 public interface TestTicketDevTicketLinkRepository extends MongoRepository<TestTicketDevTicketLink, ObjectId> {
     public List<TestTicketDevTicketLink>  findByDevTicketId(String devTicketId);
+    public TestTicketDevTicketLink findByTestCaseId(String testCaseId);
 }
