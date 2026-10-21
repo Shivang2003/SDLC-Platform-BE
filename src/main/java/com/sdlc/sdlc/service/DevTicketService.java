@@ -6,6 +6,7 @@ import com.sdlc.sdlc.enums.Priority;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.DevTicketRepository;
 import com.sdlc.sdlc.repository.DevTicketRevisionRepository;
+import com.sdlc.sdlc.repository.DevTicketStatusHistoryRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,9 @@ public class DevTicketService {
 
     @Autowired
     DevTicketRevisionRepository devTicketRevisionRepository;
+
+    @Autowired
+    DevTicketStatusHistoryRepository devTicketStatusHistoryRepository;
 
     public DevTicket checkIfDevTicketNameExists(String name, Feature feature){
         try{
@@ -98,6 +102,60 @@ public class DevTicketService {
             return devTicketRevisionRepository.save(revision);
 
         } catch (Exception e) {log.error("Error creating revision for DevTicket {}", devTicket.getKey(), e);throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create DevTicket revision", e);
+        }
+    }
+
+    public DevTicket updateDevTicketStatus(
+            DevTicket devTicket,
+            TicketStatus newStatus,
+            ProjectMember changedBy) {
+
+        try {
+            TicketStatus previousStatus = devTicket.getStatus();
+
+            if (previousStatus == newStatus) {
+                return devTicket;
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+
+            // Update ticket
+            devTicket.setStatus(newStatus);
+            devTicket.setUpdatedAt(now);
+            devTicket.setCurrentRevision(
+                    devTicket.getCurrentRevision() + 1
+            );
+
+            DevTicket updatedTicket = devTicketRepository.save(devTicket);
+
+            // Create status history
+            DevTicketStatusHistory history = new DevTicketStatusHistory();
+
+            history.setDevTicket(updatedTicket);
+            history.setPreviousStatus(previousStatus);
+            history.setNewStatus(newStatus);
+            history.setChangedBy(changedBy);
+            history.setChangedAt(now);
+
+            devTicketStatusHistoryRepository.save(history);
+
+            // Create revision snapshot
+            createRevision(updatedTicket, changedBy);
+
+            return updatedTicket;
+
+        } catch (Exception e) {
+            log.error(
+                    "Error updating status for DevTicket {}",
+                    devTicket.getKey(),
+                    e
+            );
+
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to update DevTicket status",
+                    e
+            );
         }
     }
 }
