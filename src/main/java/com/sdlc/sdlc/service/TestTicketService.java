@@ -6,6 +6,7 @@ import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
 import com.sdlc.sdlc.repository.TestTicketRepository;
 import com.sdlc.sdlc.repository.TestTicketRevisionRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 import com.sdlc.sdlc.enums.Priority;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -122,5 +125,14 @@ public class TestTicketService {
         link.setCreatedAt(LocalDateTime.now());
 
         return testTicketDevTicketLinkRepository.save(link);
+    }
+
+    public List<TestTicket> getTestTicketsLinkedToDevTicket(String devTicketId) {
+        List<TestTicketDevTicketLink> links = testTicketDevTicketLinkRepository.findByDevTicketId(devTicketId);
+
+        return links.stream()
+                .map(link -> testTicketRepository.findByKey(link.getTestCaseId()))
+                .filter(Objects::nonNull)
+                .toList();
     }
 }

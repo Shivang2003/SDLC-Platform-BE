@@ -1,26 +1,29 @@
 package com.sdlc.sdlc.controller;
 
 
-import com.sdlc.sdlc.entity.DevTicket;
-import com.sdlc.sdlc.entity.ErrorResponse;
-import com.sdlc.sdlc.entity.Project;
-import com.sdlc.sdlc.entity.ProjectMember;
+import com.sdlc.sdlc.dto.DevTicketDetailsResponse;
+import com.sdlc.sdlc.dto.TestTicketSummaryResponse;
+import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.DevTicketRepository;
 import com.sdlc.sdlc.service.DevTicketService;
 import com.sdlc.sdlc.service.FeatureService;
+import com.sdlc.sdlc.service.TestTicketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.ReactiveDatabaseCallback;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,6 +40,9 @@ public class DevTicketController {
 
     @Autowired
     DevTicketService devTicketService;
+
+    @Autowired
+    TestTicketService testTicketService;
 
     @PatchMapping("/{ticketKey}/status")
     public ResponseEntity<?> updateDevTicketStatus(@PathVariable String ticketKey, @RequestBody Map<String, TicketStatus> request) {
@@ -79,5 +85,84 @@ public class DevTicketController {
         }
     }
 
+    @GetMapping("/{ticketKey}/details")
+    public ResponseEntity<?> getDevTicketDetails(
+            @PathVariable String ticketKey) {
 
+        try {
+            Authentication authentication =
+                    SecurityContextHolder.getContext().getAuthentication();
+
+            String userName = authentication.getName();
+
+            DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+
+            if (devTicket == null) {
+                return new ResponseEntity<>(
+                        new ErrorResponse("Dev ticket not found"),
+                        HttpStatus.NOT_FOUND
+                );
+            }
+
+            Project project = devTicket.getProject();
+
+            featureService.validateFeatureEditAccess(
+                    project.getProjectId(),
+                    userName,
+                    Set.of()
+            );
+
+            List<TestTicket> testTickets =
+                    testTicketService.getTestTicketsLinkedToDevTicket(
+                            devTicket.getKey()
+                    );
+
+            DevTicketDetailsResponse devTicketResponse =
+                    new DevTicketDetailsResponse(
+                            devTicket.getKey(),
+                            devTicket.getTitle(),
+                            devTicket.getDescription(),
+                            devTicket.getStatus(),
+                            devTicket.getPriority(),
+                            devTicket.getCurrentRevision(),
+                            devTicket.getTargetVersionId(),
+                            devTicket.getProject().getProjectId(),
+                            devTicket.getFeature().getFeatureId()
+                    );
+
+            List<TestTicketSummaryResponse> testTicketResponses =
+                    testTickets.stream()
+                            .map(testTicket -> new TestTicketSummaryResponse(
+                                    testTicket.getKey(),
+                                    testTicket.getTitle(),
+                                    testTicket.getDescription(),
+                                    testTicket.getTestCaseStatus(),
+                                    testTicket.getExecutionStatus(),
+                                    testTicket.getPriority(),
+                                    testTicket.getCurrentRevision(),
+                                    testTicket.getTargetVersionId()
+                            ))
+                            .toList();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("devTicket", devTicketResponse);
+            response.put("testTickets", testTicketResponses);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        } catch (AccessDeniedException e) {
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.FORBIDDEN
+            );
+
+        } catch (Exception e) {
+            log.error("Error fetching DevTicket details", e);
+
+            return new ResponseEntity<>(
+                    new ErrorResponse("Unable to fetch DevTicket details"),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
 }
