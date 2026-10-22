@@ -2,6 +2,7 @@ package com.sdlc.sdlc.controller;
 import com.sdlc.sdlc.dto.BugTicketResponse;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
+import com.sdlc.sdlc.repository.BugTicketRepository;
 import com.sdlc.sdlc.repository.DevTicketRepository;
 import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
 import com.sdlc.sdlc.repository.TestTicketRepository;
@@ -38,11 +39,19 @@ public class TestTicketController {
     @Autowired
     BugTicketService bugTicketService;
 
+    @Autowired
+    BugTicketRepository bugTicketRepository;
+
     @PostMapping("/{testTicketKey}/create-manual-bugs")
     public ResponseEntity<?> createBugTicketManually(@PathVariable String testTicketKey,@RequestBody BugTicket bugTicket){
         try{
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
+
+            BugTicket bugTicketInDb = bugTicketRepository.findByTitle(bugTicket.getTitle());
+            if(bugTicketInDb != null){
+                return new ResponseEntity<>(new ErrorResponse("Bug Ticket already exists"), HttpStatus.CONFLICT);
+            }
 
             TestTicketDevTicketLink testTicketDevTicketLink = testTicketDevTicketLinkRepository.findByTestCaseId(testTicketKey);
 

@@ -2,8 +2,10 @@ package com.sdlc.sdlc.controller;
 
 import com.sdlc.sdlc.dto.AddProjectMemberRequest;
 import com.sdlc.sdlc.dto.DevTicketBoardResponse;
+import com.sdlc.sdlc.dto.TestTicketBoardResponse;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
+import com.sdlc.sdlc.enums.TestExecutionStatus;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.*;
 import com.sdlc.sdlc.service.FeatureService;
@@ -51,6 +53,9 @@ public class ProjectController {
 
     @Autowired
     DevTicketRepository devTicketRepository;
+
+    @Autowired
+    TestTicketRepository testTicketRepository;
 
     @PostMapping("/{projectId}/create-feature")
     public ResponseEntity<?> createFeature(@PathVariable String projectId, @RequestBody Feature feature) {
@@ -204,5 +209,41 @@ public class ProjectController {
         catch (Exception e){
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    @GetMapping("/{projectId}/features/{featureId}/test-tickets")
+    public ResponseEntity<?> getAllTestTickets(@PathVariable String projectId,@PathVariable String featureId){
+       try{
+           Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+           String currentUserName = authentication.getName();
+
+           Project project = projectRepository.findByProjectId(projectId);
+           if (project == null) {
+               return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project not found");
+           }
+
+           Feature feature = featureService.checkIfFeatureIdExists(featureId);
+           if(feature == null){
+               return ResponseEntity.status(404).body("Feature doesn't exist");
+           }
+
+           List<TestTicket> testTickets = testTicketRepository.findByProjectAndFeature(project,feature);
+
+           List<TestTicketBoardResponse.TestTicketItem> ticketItems = testTickets.stream()
+                   .map(ticket -> new TestTicketBoardResponse.TestTicketItem(
+                           ticket.getTitle(),
+                           ticket.getPriority(),
+                           ticket.getKey(),
+                           ticket.getExecutionStatus(),
+                           ticket.getUpdatedAt())).toList();
+
+           TestTicketBoardResponse response = new TestTicketBoardResponse(List.of(TestExecutionStatus.values()), ticketItems);
+
+           return new ResponseEntity<>(response, HttpStatus.OK);
+
+       }
+       catch (Exception e){
+           return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
+       }
     }
 }
