@@ -1,6 +1,7 @@
 package com.sdlc.sdlc.entity;
 
 import com.sdlc.sdlc.enums.TestCaseStatus;
+import com.sdlc.sdlc.enums.TestExecutionStatus;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
@@ -19,8 +20,8 @@ public class TestTicketStatusHistory {
     @DBRef
     private TestTicket testTicket;
 
-    private TestCaseStatus previousStatus;
-    private TestCaseStatus newStatus;
+    private TestExecutionStatus previousStatus;
+    private TestExecutionStatus newStatus;
 
     @DBRef
     private ProjectMember changedBy;

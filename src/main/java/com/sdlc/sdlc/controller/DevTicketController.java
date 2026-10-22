@@ -60,7 +60,7 @@ public class DevTicketController {
             ProjectMember projectMember = featureService.validateFeatureEditAccess(devTicketProject.getProjectId(), userName, Set.of(ProjectRoles.VIEWER,ProjectRoles.TESTER));
 
             if (projectMember == null) {
-                return ResponseEntity.status(403).body("You cannot create a test ticket for this feature");
+                return ResponseEntity.status(403).body("You cannot update a dev ticket for this feature");
             }
 
             TicketStatus status = request.get("status");

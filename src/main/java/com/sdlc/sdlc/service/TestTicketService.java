@@ -5,6 +5,7 @@ import com.sdlc.sdlc.enums.*;
 import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
 import com.sdlc.sdlc.repository.TestTicketRepository;
 import com.sdlc.sdlc.repository.TestTicketRevisionRepository;
+import com.sdlc.sdlc.repository.TestTicketStatusHistoryRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ public class TestTicketService {
 
     @Autowired
     TestTicketDevTicketLinkRepository testTicketDevTicketLinkRepository;
+
+    @Autowired
+    private TestTicketStatusHistoryRepository testTicketStatusHistoryRepository;
 
     public TestTicket checkIfTestTicketNameExists(String name, Feature feature){
         try{
@@ -134,5 +138,60 @@ public class TestTicketService {
                 .map(link -> testTicketRepository.findByKey(link.getTestCaseId()))
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    public TestTicket updateTestTicketStatus(
+            TestTicket testTicket,
+            TestExecutionStatus newStatus,
+            ProjectMember changedBy) {
+
+        try {
+            TestExecutionStatus previousStatus = testTicket.getExecutionStatus();
+
+            if (previousStatus == newStatus) {
+                return testTicket;
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+
+            // Update test ticket
+            testTicket.setExecutionStatus(newStatus);
+            testTicket.setUpdatedAt(now);
+            testTicket.setCurrentRevision(
+                    testTicket.getCurrentRevision() + 1
+            );
+
+            TestTicket updatedTicket = testTicketRepository.save(testTicket);
+
+            // Create status history
+            TestTicketStatusHistory history =
+                    new TestTicketStatusHistory();
+
+            history.setTestTicket(updatedTicket);
+            history.setPreviousStatus(previousStatus);
+            history.setNewStatus(newStatus);
+            history.setChangedBy(changedBy);
+            history.setChangedAt(now);
+
+            testTicketStatusHistoryRepository.save(history);
+
+            // Create revision snapshot
+            createRevision(updatedTicket, changedBy);
+
+            return updatedTicket;
+
+        } catch (Exception e) {
+            log.error(
+                    "Error updating status for TestTicket {}",
+                    testTicket.getKey(),
+                    e
+            );
+
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to update TestTicket status",
+                    e
+            );
+        }
     }
 }
