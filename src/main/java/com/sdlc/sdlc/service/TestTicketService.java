@@ -1,5 +1,6 @@
 package com.sdlc.sdlc.service;
 
+import com.sdlc.sdlc.dto.CreateTestTicketRequest;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.*;
 import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
@@ -61,9 +62,9 @@ public class TestTicketService {
             testTicket.setProject(feature.getProject());
             testTicket.setCreatedBy(createdBy);
 
-            testTicket.setExecutionStatus(TestExecutionStatus.NOT_EXECUTED);
-            testTicket.setTestCaseStatus(TestCaseStatus.DRAFT);
-            testTicket.setPriority(Priority.MEDIUM);
+            testTicket.setExecutionStatus(testTicket.getExecutionStatus() != null ? testTicket.getExecutionStatus() : TestExecutionStatus.NOT_EXECUTED);
+            testTicket.setTestCaseStatus(testTicket.getTestCaseStatus() != null ? testTicket.getTestCaseStatus() : TestCaseStatus.DRAFT);
+            testTicket.setPriority(testTicket.getPriority() != null ? testTicket.getPriority() : Priority.LOW);
             testTicket.setTargetVersionId(feature.getTargetVersionId());
             testTicket.setCurrentRevision(1);
 
@@ -87,6 +88,28 @@ public class TestTicketService {
                     e);
         }
     }
+
+
+    public TestTicket mapToTestTicket(
+            CreateTestTicketRequest request,
+            Feature feature) {
+
+        TestTicket testTicket = new TestTicket();
+
+        testTicket.setTitle(request.getTitle());
+        testTicket.setDescription(request.getDescription());
+
+        testTicket.setTestCaseStatus(request.getTestCaseStatus());
+        testTicket.setExecutionStatus(request.getExecutionStatus());
+        testTicket.setPriority(request.getPriority());
+
+        testTicket.setFeature(feature);
+        testTicket.setProject(feature.getProject());
+
+        return testTicket;
+    }
+
+
     public TestTicketRevision createRevision(
             TestTicket testTicket,
             ProjectMember changedBy) {
