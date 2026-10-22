@@ -2,6 +2,7 @@ package com.sdlc.sdlc.controller;
 
 
 import com.sdlc.sdlc.dto.DevTicketDetailsResponse;
+import com.sdlc.sdlc.dto.EditDevTicketRequest;
 import com.sdlc.sdlc.dto.TestTicketSummaryResponse;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
@@ -173,30 +174,23 @@ public class DevTicketController {
     }
 
     @GetMapping("/{projectId}/{featureId}/dev-tickets")
-    public ResponseEntity<?> getDevTicketsByFeature(
-            @PathVariable String projectId,
-            @PathVariable String featureId) {
+    public ResponseEntity<?> getDevTicketsByFeature(@PathVariable String projectId, @PathVariable String featureId) {
         try {
             Project project = projectRepository.findByProjectId(projectId);
             if (project == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ErrorResponse("Project not found"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Project not found"));
             }
 
             Feature feature = featureService.checkIfFeatureIdExists(featureId);
             if (feature == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ErrorResponse("Feature not found"));
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Feature not found"));
             }
 
             if (!feature.getProject().getId().equals(project.getId())) {
-                return ResponseEntity.badRequest()
-                        .body(new ErrorResponse(
-                                "Feature does not belong to this project"));
+                return ResponseEntity.badRequest().body(new ErrorResponse("Feature does not belong to this project"));
             }
 
-            List<DevTicket> devTickets =
-                    devTicketRepository.findByProjectAndFeature(project, feature);
+            List<DevTicket> devTickets = devTicketRepository.findByProjectAndFeature(project, feature);
 
             Map<String, String> response = devTickets.stream()
                     .collect(Collectors.toMap(
@@ -209,9 +203,20 @@ public class DevTicketController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            log.error("Error fetching dev tickets", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorResponse("Error fetching dev tickets"));
+            log.error("Error fetching dev tickets", e);return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Error fetching dev tickets"));
+        }
+    }
+
+    @PatchMapping("/{ticketKey}/edit")
+    public ResponseEntity<?> editDevTicket(@PathVariable String ticketKey, @RequestBody EditDevTicketRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+            DevTicket updatedTicket = devTicketService.editDevTicket(ticketKey, request, userName);
+            return new ResponseEntity<>(updatedTicket, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.BAD_REQUEST
+            );
         }
     }
 

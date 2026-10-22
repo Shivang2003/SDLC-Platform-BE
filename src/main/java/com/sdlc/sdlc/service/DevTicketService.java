@@ -2,11 +2,14 @@ package com.sdlc.sdlc.service;
 
 
 import com.sdlc.sdlc.dto.CreateDevTicketRequest;
+import com.sdlc.sdlc.dto.EditDevTicketRequest;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.Priority;
+import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.*;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Slf4j
@@ -36,6 +40,12 @@ public class DevTicketService {
 
     @Autowired
     ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    FeatureService featureService;
+
+    @Autowired
+    OrganizationMemberRepository organizationMemberRepository;
 
     public DevTicket checkIfDevTicketNameExists(String name, Feature feature){
         try{
@@ -75,6 +85,7 @@ public class DevTicketService {
 
             devTicket.setCreatedAt(now);
             devTicket.setUpdatedAt(now);
+            devTicket.setUpdatedBy(createdBy);
 
             DevTicket savedTicket = devTicketRepository.save(devTicket);
 
@@ -202,5 +213,119 @@ public class DevTicketService {
                     e
             );
         }
+    }
+
+    public DevTicket editDevTicket(
+            String ticketKey,
+            EditDevTicketRequest request,
+            String userName) {
+
+        DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+
+        if (devTicket == null) {
+            throw new RuntimeException("DevTicket not found");
+        }
+
+        // Validate edit access
+        featureService.validateFeatureEditAccess(
+                devTicket.getProject().getProjectId(),
+                userName,
+                Set.of(ProjectRoles.TESTER)
+        );
+
+        // Find the logged-in user
+        User user = userRepository.findByUserName(userName);
+
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        // Find the user's membership in this project's organization
+        OrganizationMember organizationMember =
+                organizationMemberRepository.findByUserAndOrganization(
+                        user,
+                        devTicket.getProject().getOrganization()
+                );
+
+        if (organizationMember == null) {
+            throw new RuntimeException("Organization member not found");
+        }
+
+        // Find the user's membership in this specific project
+        ProjectMember updatedBy = projectMemberRepository
+                .findByProjectAndOrganizationMember(
+                        devTicket.getProject(),
+                        organizationMember
+                )
+                .orElseThrow(() ->
+                        new RuntimeException("Project member not found"));
+
+        // Update title
+        if (request.getTitle() != null) {
+            devTicket.setTitle(request.getTitle());
+        }
+
+        // Update description
+        if (request.getDescription() != null) {
+            devTicket.setDescription(request.getDescription());
+        }
+
+        // Update priority
+        if (request.getPriority() != null) {
+            devTicket.setPriority(request.getPriority());
+        }
+
+        // Update target version
+        if (request.getTargetVersionId() != null) {
+            if (!ObjectId.isValid(request.getTargetVersionId())) {
+                throw new RuntimeException("Invalid targetVersionId");
+            }
+
+            devTicket.setTargetVersionId(
+                    new ObjectId(request.getTargetVersionId())
+            );
+        }
+
+        // Update assignee
+        if (request.getAssigneeId() != null) {
+            if (!ObjectId.isValid(request.getAssigneeId())) {
+                throw new RuntimeException("Invalid assigneeId");
+            }
+
+            ProjectMember assignee = projectMemberRepository
+                    .findById(new ObjectId(request.getAssigneeId()))
+                    .orElseThrow(() ->
+                            new RuntimeException("Assignee not found"));
+
+            if (assignee.getProject() == null
+                    || !devTicket.getProject().getId()
+                    .equals(assignee.getProject().getId())) {
+                throw new RuntimeException(
+                        "Assignee does not belong to this project");
+            }
+
+            devTicket.setAssignee(assignee);
+        }
+
+        // Update audit information
+        devTicket.setUpdatedBy(updatedBy);
+        devTicket.setUpdatedAt(LocalDateTime.now());
+
+        // Increment revision
+        if (devTicket.getCurrentRevision() == null) {
+            devTicket.setCurrentRevision(1);
+        } else {
+            devTicket.setCurrentRevision(
+                    devTicket.getCurrentRevision() + 1
+            );
+        }
+
+        // Save the updated ticket
+        DevTicket updatedTicket = devTicketRepository.save(devTicket);
+
+        // Create a snapshot of the new revision
+        createRevision(updatedTicket, updatedBy);
+
+        return updatedTicket;
     }
 }

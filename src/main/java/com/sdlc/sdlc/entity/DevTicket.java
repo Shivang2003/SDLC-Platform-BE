@@ -35,6 +35,8 @@ public class DevTicket {
 
     @DBRef
     private ProjectMember createdBy;
+    @DBRef
+    private ProjectMember updatedBy;
 
     private TicketStatus status;
     private Priority priority;
