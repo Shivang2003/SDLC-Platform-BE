@@ -7,6 +7,7 @@ import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.DevTicketRepository;
+import com.sdlc.sdlc.repository.ProjectRepository;
 import com.sdlc.sdlc.service.DevTicketService;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.TestTicketService;
@@ -17,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
+import java.util.LinkedHashMap;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/dev-ticket")
@@ -43,6 +46,9 @@ public class DevTicketController {
 
     @Autowired
     TestTicketService testTicketService;
+
+    @Autowired
+    ProjectRepository projectRepository;
 
     @PatchMapping("/{ticketKey}/status")
     public ResponseEntity<?> updateDevTicketStatus(@PathVariable String ticketKey, @RequestBody Map<String, TicketStatus> request) {
@@ -165,4 +171,48 @@ public class DevTicketController {
             );
         }
     }
+
+    @GetMapping("/{projectId}/{featureId}/dev-tickets")
+    public ResponseEntity<?> getDevTicketsByFeature(
+            @PathVariable String projectId,
+            @PathVariable String featureId) {
+        try {
+            Project project = projectRepository.findByProjectId(projectId);
+            if (project == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Project not found"));
+            }
+
+            Feature feature = featureService.checkIfFeatureIdExists(featureId);
+            if (feature == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Feature not found"));
+            }
+
+            if (!feature.getProject().getId().equals(project.getId())) {
+                return ResponseEntity.badRequest()
+                        .body(new ErrorResponse(
+                                "Feature does not belong to this project"));
+            }
+
+            List<DevTicket> devTickets =
+                    devTicketRepository.findByProjectAndFeature(project, feature);
+
+            Map<String, String> response = devTickets.stream()
+                    .collect(Collectors.toMap(
+                            DevTicket::getKey,
+                            DevTicket::getTitle,
+                            (existing, replacement) -> existing,
+                            LinkedHashMap::new
+                    ));
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error fetching dev tickets", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Error fetching dev tickets"));
+        }
+    }
+
 }
