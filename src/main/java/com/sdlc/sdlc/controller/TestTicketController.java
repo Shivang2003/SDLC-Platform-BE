@@ -1,5 +1,7 @@
 package com.sdlc.sdlc.controller;
 import com.sdlc.sdlc.dto.BugTicketResponse;
+import com.sdlc.sdlc.dto.BugTicketSummaryResponse;
+import com.sdlc.sdlc.dto.TestTicketDetailsResponse;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TestCaseStatus;
@@ -21,6 +23,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -137,6 +141,64 @@ public class TestTicketController {
         catch (Exception e) {
         log.error("Error updating dev ticket status", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Unable to update dev ticket status"));
+        }
+    }
+
+    @GetMapping("/{ticketKey}/details")
+    public ResponseEntity<?> getTestTicketDetails(@PathVariable String ticketKey) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+
+            TestTicket testTicket = testTicketRepository.findByKey(ticketKey);
+
+            if (testTicket == null) {
+                return new ResponseEntity<>(new ErrorResponse("Test ticket not found"), HttpStatus.NOT_FOUND);
+            }
+
+            Project project = testTicket.getProject();
+            featureService.validateFeatureEditAccess(project.getProjectId(), userName, Set.of());
+
+            List<BugTicket> bugTickets = bugTicketRepository.findByTestCase_Id(testTicket.getId());
+
+            TestTicketDetailsResponse testTicketResponse =
+                    new TestTicketDetailsResponse(
+                            testTicket.getKey(),
+                            testTicket.getTitle(),
+                            testTicket.getDescription(),
+                            testTicket.getTestCaseStatus(),
+                            testTicket.getExecutionStatus(),
+                            testTicket.getPriority(),
+                            testTicket.getCurrentRevision(),
+                            testTicket.getTargetVersionId(),
+                            testTicket.getProject().getProjectId(),
+                            testTicket.getFeature().getFeatureId()
+                    );
+
+            List<BugTicketSummaryResponse> bugTicketResponses = bugTickets.stream()
+                            .map(bugTicket -> new BugTicketSummaryResponse(
+                                    bugTicket.getKey(),
+                                    bugTicket.getTitle(),
+                                    bugTicket.getDescription(),
+                                    bugTicket.getStatus(),
+                                    bugTicket.getPriority(),
+                                    bugTicket.getSeverity(),
+                                    bugTicket.getCurrentRevision(),
+                                    bugTicket.getTargetVersionId()
+                            ))
+                            .toList();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("testTicket", testTicketResponse);
+            response.put("bugTickets", bugTicketResponses);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        } catch (AccessDeniedException e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.FORBIDDEN);
+        } catch (Exception e) {
+            log.error("Error fetching TestTicket details", e);
+            return new ResponseEntity<>(new ErrorResponse("Unable to fetch TestTicket details"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

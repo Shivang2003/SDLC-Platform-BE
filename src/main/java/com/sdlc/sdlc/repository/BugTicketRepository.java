@@ -14,4 +14,5 @@ public interface BugTicketRepository  extends MongoRepository<BugTicket, ObjectI
     List<BugTicket> findByFeature_FeatureId(String featureId);
     boolean existsByKey(String key);
     BugTicket findByTitle(String title);
+    List<BugTicket> findByTestCase_Id(ObjectId testTicketKey);
 }
