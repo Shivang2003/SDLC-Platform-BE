@@ -246,4 +246,26 @@ public class ProjectController {
            return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
        }
     }
+
+    @GetMapping("/{projectId}/project-members")
+    public ResponseEntity<?> getAllTestTickets(@PathVariable String projectId){
+        try{
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserName = authentication.getName();
+
+            Project project = projectRepository.findByProjectId(projectId);
+            if (project == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project not found");
+            }
+            List<ProjectMember> projectMembers = projectMemberRepository.findByProject_Id(project.getId());
+            List<String> userNames = projectMembers.stream()
+                    .map(member -> member.getOrganizationMember().getUser().getUserName())
+                    .toList();
+
+            return new ResponseEntity<>(userNames, HttpStatus.OK);
+        }
+        catch (Exception e){
+            return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

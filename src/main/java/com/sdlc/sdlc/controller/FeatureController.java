@@ -1,7 +1,10 @@
 package com.sdlc.sdlc.controller;
 
+import com.sdlc.sdlc.dto.CreateDevTicketRequest;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
+import com.sdlc.sdlc.repository.ProjectMemberRepository;
+import com.sdlc.sdlc.repository.UserRepository;
 import com.sdlc.sdlc.service.DevTicketService;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.TestTicketService;
@@ -30,8 +33,14 @@ public class FeatureController {
     @Autowired
     TestTicketService testTicketService;
 
+    @Autowired
+    ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    UserRepository userRepository;
+
     @PostMapping("/{featureId}/create-dev-ticket")
-    public ResponseEntity<?> createDevTicket(@PathVariable String featureId, @RequestBody DevTicket devTicket){
+    public ResponseEntity<?> createDevTicket(@PathVariable String featureId, @RequestBody CreateDevTicketRequest devTicketRequest){
         try{
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
@@ -39,7 +48,7 @@ public class FeatureController {
             if(feature == null){
                 return ResponseEntity.status(404).body("Feature doesn't exist");
             }
-            DevTicket devTicketInDb = devTicketService.checkIfDevTicketNameExists(devTicket.getTitle(), feature);
+            DevTicket devTicketInDb = devTicketService.checkIfDevTicketNameExists(devTicketRequest.getTitle(), feature);
             if(devTicketInDb!=null){
                 return new ResponseEntity<>(new ErrorResponse("Dev Ticket already exists"), HttpStatus.CONFLICT);
             }
@@ -48,6 +57,12 @@ public class FeatureController {
             if (projectMember == null) {
                 return ResponseEntity.status(403).body("You cannot create a dev ticket for this feature");
             }
+
+            DevTicket devTicket = devTicketService.mapToDevTicket(devTicketRequest, feature);
+            if(devTicket == null){
+                return ResponseEntity.badRequest().body("Please all the fields properly");
+            }
+
             devTicketService.createDevTicket(devTicket,feature,projectMember);
             return new ResponseEntity<>(HttpStatus.CREATED);
         }
