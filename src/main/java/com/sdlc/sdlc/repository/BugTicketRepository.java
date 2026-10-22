@@ -1,6 +1,7 @@
 package com.sdlc.sdlc.repository;
 
 import com.sdlc.sdlc.entity.BugTicket;
+import com.sdlc.sdlc.entity.Feature;
 import com.sdlc.sdlc.entity.TestTicket;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -15,4 +16,5 @@ public interface BugTicketRepository  extends MongoRepository<BugTicket, ObjectI
     boolean existsByKey(String key);
     BugTicket findByTitle(String title);
     List<BugTicket> findByTestCase_Id(ObjectId testTicketKey);
+    BugTicket findByTitleAndFeature(String title, Feature feature);
 }

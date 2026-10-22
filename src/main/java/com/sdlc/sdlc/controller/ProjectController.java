@@ -1,13 +1,12 @@
 package com.sdlc.sdlc.controller;
 
-import com.sdlc.sdlc.dto.AddProjectMemberRequest;
-import com.sdlc.sdlc.dto.DevTicketBoardResponse;
-import com.sdlc.sdlc.dto.TestTicketBoardResponse;
+import com.sdlc.sdlc.dto.*;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TestExecutionStatus;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.*;
+import com.sdlc.sdlc.service.BugTicketService;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.ProjectService;
 import com.sdlc.sdlc.service.UserService;
@@ -20,7 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import com.sdlc.sdlc.dto.FeatureSummaryResponse;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Set;
@@ -56,6 +55,12 @@ public class ProjectController {
 
     @Autowired
     TestTicketRepository testTicketRepository;
+
+    @Autowired
+    BugTicketService bugTicketService;
+
+    @Autowired
+    BugTicketRepository bugTicketRepository;
 
     @PostMapping("/{projectId}/create-feature")
     public ResponseEntity<?> createFeature(@PathVariable String projectId, @RequestBody Feature feature) {
@@ -268,4 +273,81 @@ public class ProjectController {
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+//    @PostMapping("/{featureId}/{testTicketId}/create-bug-ticket")
+//    public ResponseEntity<?> createBugTicket(
+//            @PathVariable String featureId,
+//            @PathVariable String testTicketId,
+//            @RequestBody CreateBugTicketRequest request) {
+//
+//        try {
+//            Authentication authentication =
+//                    SecurityContextHolder.getContext().getAuthentication();
+//
+//            String userName = authentication.getName();
+//
+//            Feature feature = featureService.checkIfFeatureIdExists(featureId);
+//
+//            if (feature == null) {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(new ErrorResponse("Feature doesn't exist"));
+//            }
+//
+//            TestTicket testTicket =
+//                    testTicketRepository.findByKey(testTicketId);
+//
+//            if (testTicket == null) {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+//                        .body(new ErrorResponse("Test ticket doesn't exist"));
+//            }
+//
+//            if (!testTicket.getFeature().getFeatureId().equals(featureId)) {
+//                return ResponseEntity.badRequest()
+//                        .body(new ErrorResponse(
+//                                "Test ticket does not belong to this feature"));
+//            }
+//
+//            BugTicket existingBug = bugTicketRepository.findByTitleAndFeature(request.getTitle(), feature);
+//
+//            if (existingBug != null) {
+//                return new ResponseEntity<>(
+//                        new ErrorResponse("Bug Ticket already exists"),
+//                        HttpStatus.CONFLICT
+//                );
+//            }
+//
+//            String projectId = feature.getProject().getProjectId();
+//
+//            ProjectMember createdBy =
+//                    featureService.validateFeatureEditAccess(
+//                            projectId,
+//                            userName,
+//                            Set.of(ProjectRoles.VIEWER, ProjectRoles.TESTER)
+//                    );
+//
+//            if (createdBy == null) {
+//                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+//                        .body(new ErrorResponse(
+//                                "You cannot create a bug ticket for this feature"));
+//            }
+//
+//            BugTicket bugTicket = bugTicketService.mapToBugTicket(
+//                    request, feature, testTicket);
+//
+//            BugTicket createdBug = bugTicketService.createBugTicket(
+//                    bugTicket, feature, createdBy);
+//
+//            return new ResponseEntity<>(createdBug, HttpStatus.CREATED);
+//
+//        } catch (ResponseStatusException e) {
+//            return ResponseEntity.status(e.getStatusCode())
+//                    .body(new ErrorResponse(e.getReason()));
+//
+//        } catch (Exception e) {
+//            log.error("Error creating BugTicket", e);
+//
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(new ErrorResponse("Error creating bug ticket"));
+//        }
+//    }
 }
