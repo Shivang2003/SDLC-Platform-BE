@@ -64,11 +64,11 @@ public class ProjectController {
 
     @PostMapping("/{projectId}/create-feature")
     public ResponseEntity<?> createFeature(@PathVariable String projectId, @RequestBody Feature feature) {
-        try{
+        try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
             ProjectMember projectMember = featureService.validateFeatureEditAccess(projectId, userName, Set.of(ProjectRoles.VIEWER));
-            if(projectMember == null) {
+            if (projectMember == null) {
                 return new ResponseEntity<>(new ErrorResponse("User is not a member of the project"), HttpStatus.FORBIDDEN);
             }
             Project projectInDb = projectService.findProjectById(projectId);
@@ -76,14 +76,13 @@ public class ProjectController {
                 return new ResponseEntity<>(new ErrorResponse("Project doesn't exist"), HttpStatus.NOT_FOUND);
             }
             Feature checkFeature = featureService.checkIfFeatureNameExists(feature.getName(), projectInDb);
-            if(checkFeature != null){
+            if (checkFeature != null) {
                 return new ResponseEntity<>(new ErrorResponse("Feature already exists"), HttpStatus.CONFLICT);
             }
             featureService.createNewFeature(feature, projectInDb, projectMember);
 
             return new ResponseEntity<>(feature, HttpStatus.OK);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Error creating feature: ", e);
             return ResponseEntity.badRequest().body("Error creating feature");
         }
@@ -121,8 +120,8 @@ public class ProjectController {
                     ))
                     .toList();
 
-            if(response.isEmpty()){
-                return new ResponseEntity<>(new ErrorResponse("no features available"),HttpStatus.FORBIDDEN);
+            if (response.isEmpty()) {
+                return new ResponseEntity<>(new ErrorResponse("no features available"), HttpStatus.FORBIDDEN);
             }
             return new ResponseEntity<>(response, HttpStatus.OK);
 
@@ -171,18 +170,16 @@ public class ProjectController {
             ProjectMember projectMember = projectService.addMemberToProject(newOrgMember, project, role);
             return new ResponseEntity<>(projectMember, HttpStatus.CREATED);
 
-        }
-        catch (IllegalStateException e) {
+        } catch (IllegalStateException e) {
             return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @GetMapping("/{projectId}/features/{featureId}/dev-tickets")
-    public ResponseEntity<?> getAllDevTickets(@PathVariable String projectId,@PathVariable String featureId){
-        try{
+    public ResponseEntity<?> getAllDevTickets(@PathVariable String projectId, @PathVariable String featureId) {
+        try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String currentUserName = authentication.getName();
 
@@ -192,69 +189,67 @@ public class ProjectController {
             }
 
             Feature feature = featureService.checkIfFeatureIdExists(featureId);
-            if(feature == null){
+            if (feature == null) {
                 return ResponseEntity.status(404).body("Feature doesn't exist");
             }
 
-            List<DevTicket> devTickets = devTicketRepository.findByProjectAndFeature(project,feature);
+            List<DevTicket> devTickets = devTicketRepository.findByProjectAndFeature(project, feature);
 
             List<DevTicketBoardResponse.DevTicketItem> ticketItems = devTickets.stream()
-                            .map(ticket -> new DevTicketBoardResponse.DevTicketItem(
-                                            ticket.getTitle(),
-                                            ticket.getPriority(),
-                                            ticket.getKey(),
-                                            ticket.getStatus(),
-                                            ticket.getUpdatedAt())).toList();
+                    .map(ticket -> new DevTicketBoardResponse.DevTicketItem(
+                            ticket.getTitle(),
+                            ticket.getPriority(),
+                            ticket.getKey(),
+                            ticket.getStatus(),
+                            ticket.getUpdatedAt())).toList();
 
             DevTicketBoardResponse response = new DevTicketBoardResponse(List.of(TicketStatus.values()), ticketItems);
 
             return new ResponseEntity<>(response, HttpStatus.OK);
 
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     @GetMapping("/{projectId}/features/{featureId}/test-tickets")
-    public ResponseEntity<?> getAllTestTickets(@PathVariable String projectId,@PathVariable String featureId){
-       try{
-           Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-           String currentUserName = authentication.getName();
+    public ResponseEntity<?> getAllTestTickets(@PathVariable String projectId, @PathVariable String featureId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserName = authentication.getName();
 
-           Project project = projectRepository.findByProjectId(projectId);
-           if (project == null) {
-               return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project not found");
-           }
+            Project project = projectRepository.findByProjectId(projectId);
+            if (project == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project not found");
+            }
 
-           Feature feature = featureService.checkIfFeatureIdExists(featureId);
-           if(feature == null){
-               return ResponseEntity.status(404).body("Feature doesn't exist");
-           }
+            Feature feature = featureService.checkIfFeatureIdExists(featureId);
+            if (feature == null) {
+                return ResponseEntity.status(404).body("Feature doesn't exist");
+            }
 
-           List<TestTicket> testTickets = testTicketRepository.findByProjectAndFeature(project,feature);
+            List<TestTicket> testTickets = testTicketRepository.findByProjectAndFeature(project, feature);
 
-           List<TestTicketBoardResponse.TestTicketItem> ticketItems = testTickets.stream()
-                   .map(ticket -> new TestTicketBoardResponse.TestTicketItem(
-                           ticket.getTitle(),
-                           ticket.getPriority(),
-                           ticket.getKey(),
-                           ticket.getExecutionStatus(),
-                           ticket.getUpdatedAt())).toList();
+            List<TestTicketBoardResponse.TestTicketItem> ticketItems = testTickets.stream()
+                    .map(ticket -> new TestTicketBoardResponse.TestTicketItem(
+                            ticket.getTitle(),
+                            ticket.getPriority(),
+                            ticket.getKey(),
+                            ticket.getExecutionStatus(),
+                            ticket.getUpdatedAt())).toList();
 
-           TestTicketBoardResponse response = new TestTicketBoardResponse(List.of(TestExecutionStatus.values()), ticketItems);
+            TestTicketBoardResponse response = new TestTicketBoardResponse(List.of(TestExecutionStatus.values()), ticketItems);
 
-           return new ResponseEntity<>(response, HttpStatus.OK);
+            return new ResponseEntity<>(response, HttpStatus.OK);
 
-       }
-       catch (Exception e){
-           return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
-       }
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @GetMapping("/{projectId}/project-members")
-    public ResponseEntity<?> getAllTestTickets(@PathVariable String projectId){
-        try{
+    public ResponseEntity<?> getAllTestTickets(@PathVariable String projectId) {
+        try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String currentUserName = authentication.getName();
 
@@ -268,86 +263,8 @@ public class ProjectController {
                     .toList();
 
             return new ResponseEntity<>(userNames, HttpStatus.OK);
-        }
-        catch (Exception e){
+        } catch (Exception e){
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
-//    @PostMapping("/{featureId}/{testTicketId}/create-bug-ticket")
-//    public ResponseEntity<?> createBugTicket(
-//            @PathVariable String featureId,
-//            @PathVariable String testTicketId,
-//            @RequestBody CreateBugTicketRequest request) {
-//
-//        try {
-//            Authentication authentication =
-//                    SecurityContextHolder.getContext().getAuthentication();
-//
-//            String userName = authentication.getName();
-//
-//            Feature feature = featureService.checkIfFeatureIdExists(featureId);
-//
-//            if (feature == null) {
-//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                        .body(new ErrorResponse("Feature doesn't exist"));
-//            }
-//
-//            TestTicket testTicket =
-//                    testTicketRepository.findByKey(testTicketId);
-//
-//            if (testTicket == null) {
-//                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                        .body(new ErrorResponse("Test ticket doesn't exist"));
-//            }
-//
-//            if (!testTicket.getFeature().getFeatureId().equals(featureId)) {
-//                return ResponseEntity.badRequest()
-//                        .body(new ErrorResponse(
-//                                "Test ticket does not belong to this feature"));
-//            }
-//
-//            BugTicket existingBug = bugTicketRepository.findByTitleAndFeature(request.getTitle(), feature);
-//
-//            if (existingBug != null) {
-//                return new ResponseEntity<>(
-//                        new ErrorResponse("Bug Ticket already exists"),
-//                        HttpStatus.CONFLICT
-//                );
-//            }
-//
-//            String projectId = feature.getProject().getProjectId();
-//
-//            ProjectMember createdBy =
-//                    featureService.validateFeatureEditAccess(
-//                            projectId,
-//                            userName,
-//                            Set.of(ProjectRoles.VIEWER, ProjectRoles.TESTER)
-//                    );
-//
-//            if (createdBy == null) {
-//                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-//                        .body(new ErrorResponse(
-//                                "You cannot create a bug ticket for this feature"));
-//            }
-//
-//            BugTicket bugTicket = bugTicketService.mapToBugTicket(
-//                    request, feature, testTicket);
-//
-//            BugTicket createdBug = bugTicketService.createBugTicket(
-//                    bugTicket, feature, createdBy);
-//
-//            return new ResponseEntity<>(createdBug, HttpStatus.CREATED);
-//
-//        } catch (ResponseStatusException e) {
-//            return ResponseEntity.status(e.getStatusCode())
-//                    .body(new ErrorResponse(e.getReason()));
-//
-//        } catch (Exception e) {
-//            log.error("Error creating BugTicket", e);
-//
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(new ErrorResponse("Error creating bug ticket"));
-//        }
-//    }
 }

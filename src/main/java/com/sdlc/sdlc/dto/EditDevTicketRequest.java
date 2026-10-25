@@ -12,8 +12,7 @@ public class EditDevTicketRequest {
     private String title;
     private String description;
     private Priority priority;
-    private String targetVersionId;
-    private String assigneeId;
+    private String assigneeUserName;
 
     private List<TestTicketExecutionStatusUpdate> testTicketStatuses;
 }

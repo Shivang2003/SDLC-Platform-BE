@@ -295,35 +295,19 @@ public class DevTicketService {
             devTicket.setPriority(request.getPriority());
         }
 
-        // Update target version
-        if (request.getTargetVersionId() != null) {
-            if (!ObjectId.isValid(request.getTargetVersionId())) {
-                throw new RuntimeException("Invalid targetVersionId");
-            }
-
-            devTicket.setTargetVersionId(
-                    new ObjectId(request.getTargetVersionId())
-            );
-        }
-
         // Update assignee
-        if (request.getAssigneeId() != null) {
-            if (!ObjectId.isValid(request.getAssigneeId())) {
-                throw new RuntimeException("Invalid assigneeId");
+        if (request.getAssigneeUserName() != null) {
+            User assigneeUser = userRepository.findByUserName(request.getAssigneeUserName());
+            if (assigneeUser == null) {
+                throw new RuntimeException("Assignee user not found");
             }
-
-            ProjectMember assignee = projectMemberRepository
-                    .findById(new ObjectId(request.getAssigneeId()))
-                    .orElseThrow(() ->
-                            new RuntimeException("Assignee not found"));
-
-            if (assignee.getProject() == null
-                    || !devTicket.getProject().getId()
-                    .equals(assignee.getProject().getId())) {
-                throw new RuntimeException(
-                        "Assignee does not belong to this project");
+            OrganizationMember assigneeOrganizationMember = organizationMemberRepository.findByUserAndOrganization(assigneeUser, devTicket.getProject().getOrganization());
+            if (assigneeOrganizationMember == null) {
+                throw new RuntimeException("Assignee is not a member of this organization");
             }
-
+            ProjectMember assignee = projectMemberRepository.findByProjectAndOrganizationMember(
+                            devTicket.getProject(),
+                            assigneeOrganizationMember).orElseThrow(() -> new RuntimeException("Assignee is not a member of this project"));
             devTicket.setAssignee(assignee);
         }
 
