@@ -3,6 +3,7 @@ package com.sdlc.sdlc.service;
 
 import com.sdlc.sdlc.dto.CreateDevTicketRequest;
 import com.sdlc.sdlc.dto.EditDevTicketRequest;
+import com.sdlc.sdlc.dto.TestTicketExecutionStatusUpdate;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.Priority;
 import com.sdlc.sdlc.enums.ProjectRoles;
@@ -17,7 +18,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -45,7 +49,13 @@ public class DevTicketService {
     FeatureService featureService;
 
     @Autowired
+    TestTicketService testTicketService;
+
+    @Autowired
     OrganizationMemberRepository organizationMemberRepository;
+
+    @Autowired
+    TestTicketRepository testTicketRepository;
 
     public DevTicket checkIfDevTicketNameExists(String name, Feature feature){
         try{
@@ -259,6 +269,16 @@ public class DevTicketService {
                 )
                 .orElseThrow(() ->
                         new RuntimeException("Project member not found"));
+
+        if (request.getTestTicketStatuses() != null
+                && !request.getTestTicketStatuses().isEmpty()) {
+
+            testTicketService.updateExecutionStatusesForDevTicket(
+                    devTicket.getKey(),
+                    request.getTestTicketStatuses(),
+                    updatedBy
+            );
+        }
 
         // Update title
         if (request.getTitle() != null) {

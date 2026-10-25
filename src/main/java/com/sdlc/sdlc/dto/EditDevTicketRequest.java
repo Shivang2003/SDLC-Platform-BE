@@ -1,7 +1,10 @@
 package com.sdlc.sdlc.dto;
 
 import com.sdlc.sdlc.enums.Priority;
+import com.sdlc.sdlc.enums.TestExecutionStatus;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class EditDevTicketRequest {
@@ -11,4 +14,6 @@ public class EditDevTicketRequest {
     private Priority priority;
     private String targetVersionId;
     private String assigneeId;
+
+    private List<TestTicketExecutionStatusUpdate> testTicketStatuses;
 }

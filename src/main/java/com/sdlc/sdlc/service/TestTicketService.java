@@ -1,6 +1,7 @@
 package com.sdlc.sdlc.service;
 
 import com.sdlc.sdlc.dto.CreateTestTicketRequest;
+import com.sdlc.sdlc.dto.TestTicketExecutionStatusUpdate;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.*;
 import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
@@ -12,12 +13,14 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import com.sdlc.sdlc.enums.Priority;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -215,6 +218,42 @@ public class TestTicketService {
                     "Failed to update TestTicket status",
                     e
             );
+        }
+    }
+    @Transactional(rollbackFor = Exception.class)
+    public void updateExecutionStatusesForDevTicket(String devTicketKey, List<TestTicketExecutionStatusUpdate> updates, ProjectMember changedBy) {
+        try {
+            if (updates == null || updates.isEmpty()) {
+                return;
+            }
+
+            List<TestTicket> testTickets = getTestTicketsLinkedToDevTicket(devTicketKey);
+            Map<String, TestTicket> linkedTickets = testTickets.stream().collect(Collectors.toMap(TestTicket::getKey, Function.identity()));
+
+            Set<String> requestedKeys = new HashSet<>();
+
+            // Validate everything before updating any TestTicket
+            for (TestTicketExecutionStatusUpdate update : updates) {
+                if (update.getTestTicketKey() == null || update.getExecutionStatus() == null) {throw new IllegalArgumentException("TestTicket key and execution status are required");
+                }
+
+                if (!requestedKeys.add(update.getTestTicketKey())) {
+                    throw new IllegalArgumentException("Duplicate TestTicket: " + update.getTestTicketKey());
+                }
+
+                if (!linkedTickets.containsKey(update.getTestTicketKey())) {
+                    throw new IllegalArgumentException("TestTicket " + update.getTestTicketKey() + " is not linked to " + devTicketKey);
+                }
+            }
+
+            // Update each TestTicket using your existing status-update method
+            for (TestTicketExecutionStatusUpdate update : updates) {
+                TestTicket testTicket = linkedTickets.get(update.getTestTicketKey());
+                updateTestTicketStatus(testTicket, update.getExecutionStatus(), changedBy);
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to update TestTicket statuses for " + devTicketKey, e);
         }
     }
 }
