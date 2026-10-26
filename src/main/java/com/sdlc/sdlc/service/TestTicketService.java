@@ -1,9 +1,6 @@
 package com.sdlc.sdlc.service;
 
-import com.sdlc.sdlc.dto.BugTicketStatusUpdate;
-import com.sdlc.sdlc.dto.CreateTestTicketRequest;
-import com.sdlc.sdlc.dto.EditTestTicketRequest;
-import com.sdlc.sdlc.dto.TestTicketExecutionStatusUpdate;
+import com.sdlc.sdlc.dto.*;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.*;
 import com.sdlc.sdlc.repository.*;
@@ -373,5 +370,59 @@ public class TestTicketService {
         return testTicket;
     }
 
+    public List<TestTicketRevisionResponse> getTestTicketRevisions(
+            String ticketKey) {
 
+        TestTicket testTicket = testTicketRepository.findByKey(ticketKey);
+
+        if (testTicket == null) {
+            throw new RuntimeException("TestTicket not found");
+        }
+
+        List<TestTicketRevision> revisions =
+                testTicketRevisionRepository
+                        .findByTicketKeyOrderByRevisionNumberDesc(ticketKey);
+
+        return revisions.stream().map(revision -> {
+            TestTicketRevisionResponse response =
+                    new TestTicketRevisionResponse();
+
+            response.setTicketKey(revision.getTicketKey());
+            response.setRevisionNumber(revision.getRevisionNumber());
+            response.setTitle(revision.getTitle());
+            response.setDescription(revision.getDescription());
+            response.setTestCaseStatus(revision.getTestCaseStatus());
+            response.setExecutionStatus(revision.getExecutionStatus());
+            response.setPriority(revision.getPriority());
+            response.setCreatedAt(revision.getCreatedAt());
+
+            if (revision.getProject() != null) {
+                response.setProjectId(
+                        revision.getProject().getProjectId());
+            }
+
+            if (revision.getFeature() != null) {
+                response.setFeatureId(
+                        revision.getFeature().getFeatureId());
+            }
+
+            if (revision.getCreatedBy() != null
+                    && revision.getCreatedBy().getOrganizationMember() != null
+                    && revision.getCreatedBy().getOrganizationMember().getUser() != null) {
+                response.setCreatedByUserName(
+                        revision.getCreatedBy().getOrganizationMember()
+                                .getUser().getUserName());
+            }
+
+            if (revision.getChangedBy() != null
+                    && revision.getChangedBy().getOrganizationMember() != null
+                    && revision.getChangedBy().getOrganizationMember().getUser() != null) {
+                response.setChangedByUserName(
+                        revision.getChangedBy().getOrganizationMember()
+                                .getUser().getUserName());
+            }
+
+            return response;
+        }).toList();
+    }
 }

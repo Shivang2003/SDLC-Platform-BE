@@ -239,4 +239,25 @@ public class TestTicketController {
         }
     }
 
+    @GetMapping("/{ticketKey}/revisions")
+    public ResponseEntity<?> getTestTicketRevisions(
+            @PathVariable String ticketKey) {
+        try {
+            List<TestTicketRevisionResponse> revisions =
+                    testTicketService.getTestTicketRevisions(ticketKey);
+
+            return new ResponseEntity<>(revisions, HttpStatus.OK);
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ErrorResponse(e.getMessage()));
+
+        } catch (Exception e) {
+            log.error("Error fetching TestTicket revisions: {}", ticketKey, e);
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Error fetching TestTicket revisions"));
+        }
+    }
+
 }
