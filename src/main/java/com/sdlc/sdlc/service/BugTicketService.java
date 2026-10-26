@@ -2,22 +2,26 @@ package com.sdlc.sdlc.service;
 
 import com.sdlc.sdlc.dto.BugTicketResponse;
 import com.sdlc.sdlc.dto.CreateBugTicketRequest;
+import com.sdlc.sdlc.dto.TestTicketExecutionStatusUpdate;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.BugStatus;
 import com.sdlc.sdlc.enums.Priority;
 import com.sdlc.sdlc.enums.Severity;
 import com.sdlc.sdlc.repository.BugTicketRepository;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
+import com.sdlc.sdlc.repository.TestTicketBugTicketLinkRepository;
 import com.sdlc.sdlc.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -34,6 +38,9 @@ public class BugTicketService {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    TestTicketBugTicketLinkRepository testTicketBugTicketLinkRepository;
 
     public BugTicket createManualBugTicket(
             BugTicket bugTicket,
@@ -79,6 +86,28 @@ public class BugTicketService {
             log.error("Error creating manual BugTicket", e);
             throw new RuntimeException("Unable to create BugTicket", e);
         }
+    }
+
+    public TestTicketBugTicketLink createTestTicketBugTicketLink(TestTicket testTicket, BugTicket bugTicket) {
+        TestTicketBugTicketLink link = new TestTicketBugTicketLink();
+        link.setTestTicketKey(testTicket.getKey().toString());
+        link.setBugTicketKey(bugTicket.getKey().toString());
+        link.setCreatedAt(LocalDateTime.now());
+        return testTicketBugTicketLinkRepository.save(link);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public BugTicket createManualBugTicketWithLink(
+            BugTicket bugTicket,
+            TestTicket testTicket,
+            ProjectMember createdBy) {
+
+        BugTicket savedBugTicket =
+                createManualBugTicket(bugTicket, testTicket, createdBy);
+
+        createTestTicketBugTicketLink(testTicket, savedBugTicket);
+
+        return savedBugTicket;
     }
 
     public BugTicketResponse toResponse(BugTicket bugTicket) {

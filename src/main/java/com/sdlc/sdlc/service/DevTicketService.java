@@ -3,14 +3,12 @@ package com.sdlc.sdlc.service;
 
 import com.sdlc.sdlc.dto.CreateDevTicketRequest;
 import com.sdlc.sdlc.dto.EditDevTicketRequest;
-import com.sdlc.sdlc.dto.TestTicketExecutionStatusUpdate;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.Priority;
 import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.*;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,10 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -237,11 +232,7 @@ public class DevTicketService {
         }
 
         // Validate edit access
-        featureService.validateFeatureEditAccess(
-                devTicket.getProject().getProjectId(),
-                userName,
-                Set.of(ProjectRoles.TESTER)
-        );
+        featureService.validateFeatureEditAccess(devTicket.getProject().getProjectId(), userName, Set.of(ProjectRoles.TESTER,ProjectRoles.VIEWER));
 
         // Find the logged-in user
         User user = userRepository.findByUserName(userName);
@@ -251,29 +242,20 @@ public class DevTicketService {
         }
 
         // Find the user's membership in this project's organization
-        OrganizationMember organizationMember =
-                organizationMemberRepository.findByUserAndOrganization(
-                        user,
-                        devTicket.getProject().getOrganization()
-                );
+        OrganizationMember organizationMember = organizationMemberRepository.findByUserAndOrganization(user, devTicket.getProject().getOrganization());
 
         if (organizationMember == null) {
             throw new RuntimeException("Organization member not found");
         }
 
         // Find the user's membership in this specific project
-        ProjectMember updatedBy = projectMemberRepository
-                .findByProjectAndOrganizationMember(
-                        devTicket.getProject(),
-                        organizationMember
-                )
-                .orElseThrow(() ->
-                        new RuntimeException("Project member not found"));
+        ProjectMember updatedBy = projectMemberRepository.findByProjectAndOrganizationMember(devTicket.getProject(),organizationMember)
+                .orElseThrow(() -> new RuntimeException("Project member not found"));
 
         if (request.getTestTicketStatuses() != null
                 && !request.getTestTicketStatuses().isEmpty()) {
 
-            testTicketService.updateExecutionStatusesForDevTicket(
+            testTicketService.updateExecutionStatusesForTestTicket(
                     devTicket.getKey(),
                     request.getTestTicketStatuses(),
                     updatedBy

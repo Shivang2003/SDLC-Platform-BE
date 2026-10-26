@@ -1,17 +1,11 @@
 package com.sdlc.sdlc.controller;
-import com.sdlc.sdlc.dto.BugTicketResponse;
-import com.sdlc.sdlc.dto.BugTicketSummaryResponse;
-import com.sdlc.sdlc.dto.CreateBugTicketRequest;
-import com.sdlc.sdlc.dto.TestTicketDetailsResponse;
+import com.sdlc.sdlc.dto.*;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TestCaseStatus;
 import com.sdlc.sdlc.enums.TestExecutionStatus;
 import com.sdlc.sdlc.enums.TicketStatus;
-import com.sdlc.sdlc.repository.BugTicketRepository;
-import com.sdlc.sdlc.repository.DevTicketRepository;
-import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
-import com.sdlc.sdlc.repository.TestTicketRepository;
+import com.sdlc.sdlc.repository.*;
 import com.sdlc.sdlc.service.BugTicketService;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.TestTicketService;
@@ -56,11 +50,12 @@ public class TestTicketController {
     @Autowired
     TestTicketService testTicketService;
 
+    @Autowired
+    TestTicketBugTicketLinkRepository testTicketBugTicketLinkRepository;
+
 
     @PostMapping("/{testTicketKey}/create-manual-bugs")
-    public ResponseEntity<?> createBugTicketManually(
-            @PathVariable String testTicketKey,
-            @RequestBody CreateBugTicketRequest request) {
+    public ResponseEntity<?> createBugTicketManually(@PathVariable String testTicketKey, @RequestBody CreateBugTicketRequest request) {
 
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -71,39 +66,51 @@ public class TestTicketController {
             if (testTicket == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Test ticket not found"));
             }
-            BugTicket existingBug = bugTicketRepository.findByTitle(request.getTitle());
-            if (existingBug != null) {
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse("Bug Ticket already exists"));
+
+            // Check for duplicate bug title within this TestTicket
+            List<TestTicketBugTicketLink> links = testTicketBugTicketLinkRepository.findByTestTicketKey(testTicketKey);
+
+            for (TestTicketBugTicketLink bugLink : links) {
+
+                BugTicket existingBug = bugTicketRepository.findByKey(bugLink.getBugTicketKey());
+
+                if (existingBug != null && existingBug.getTitle() != null && request.getTitle() != null && existingBug.getTitle().equalsIgnoreCase(request.getTitle())) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(new ErrorResponse("Bug Ticket with this title already exists for this TestTicket"));
+                }
             }
 
-            TestTicketDevTicketLink link = testTicketDevTicketLinkRepository.findByTestCaseId(testTicketKey);
+            // Find the DevTicket linked to this TestTicket
+            TestTicketDevTicketLink devLink = testTicketDevTicketLinkRepository.findByTestCaseId(testTicketKey);
 
-            if (link == null) {
+            if (devLink == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("No DevTicket is linked to this TestTicket"));
             }
 
-            DevTicket devTicket = devTicketRepository.findByKey(link.getDevTicketId());
-
-            if (devTicket == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Dev ticket not found"));
+            DevTicket devTicket = devTicketRepository.findByKey(devLink.getDevTicketId());
+            if (devTicket == null) {return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Dev ticket not found"));
             }
 
             Project project = devTicket.getProject();
+            // Validate project access
             ProjectMember createdBy = featureService.validateFeatureEditAccess(project.getProjectId(), userName, Set.of(ProjectRoles.VIEWER, ProjectRoles.DEV));
 
             if (createdBy == null) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse("You cannot create a bug ticket for this project"));
             }
 
+            // Map the request to a BugTicket
             BugTicket bugTicket = bugTicketService.mapToBugTicket(request, testTicket.getFeature(), testTicket);
-            BugTicket savedBugTicket = bugTicketService.createManualBugTicket(bugTicket, testTicket, createdBy);
+
+            // Save the BugTicket and its link
+            BugTicket savedBugTicket = bugTicketService.createManualBugTicketWithLink(bugTicket, testTicket, createdBy);
+
             BugTicketResponse response = bugTicketService.toResponse(savedBugTicket);
 
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (ResponseStatusException e) {
-            return ResponseEntity.status(e.getStatusCode())
-                    .body(new ErrorResponse(e.getReason()));
+            return ResponseEntity.status(e.getStatusCode()).body(new ErrorResponse(e.getReason()));
 
         } catch (Exception e) {
             log.error("Error creating manual BugTicket", e);
@@ -207,4 +214,29 @@ public class TestTicketController {
             return new ResponseEntity<>(new ErrorResponse("Unable to fetch TestTicket details"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @PatchMapping("/{ticketKey}/edit")
+    public ResponseEntity<?> editTestTicket(@PathVariable String ticketKey, @RequestBody EditTestTicketRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+
+            TestTicket updatedTicket = testTicketService.editTestTicket(ticketKey, request, userName);
+            return new ResponseEntity<>(updatedTicket, HttpStatus.OK);
+
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(new ErrorResponse(e.getReason()));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
+
+        } catch (Exception e) {
+            log.error("Error editing TestTicket: {}", ticketKey, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Error editing TestTicket"));
+        }
+    }
+
 }

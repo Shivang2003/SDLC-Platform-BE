@@ -1,15 +1,13 @@
 package com.sdlc.sdlc.service;
 
+import com.sdlc.sdlc.dto.BugTicketStatusUpdate;
 import com.sdlc.sdlc.dto.CreateTestTicketRequest;
+import com.sdlc.sdlc.dto.EditTestTicketRequest;
 import com.sdlc.sdlc.dto.TestTicketExecutionStatusUpdate;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.*;
-import com.sdlc.sdlc.repository.TestTicketDevTicketLinkRepository;
-import com.sdlc.sdlc.repository.TestTicketRepository;
-import com.sdlc.sdlc.repository.TestTicketRevisionRepository;
-import com.sdlc.sdlc.repository.TestTicketStatusHistoryRepository;
+import com.sdlc.sdlc.repository.*;
 import lombok.extern.slf4j.Slf4j;
-import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -39,7 +37,19 @@ public class TestTicketService {
     TestTicketDevTicketLinkRepository testTicketDevTicketLinkRepository;
 
     @Autowired
-    private TestTicketStatusHistoryRepository testTicketStatusHistoryRepository;
+    ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    OrganizationMemberRepository organizationMemberRepository;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    FeatureService featureService;
+
+    @Autowired
+    TestTicketStatusHistoryRepository testTicketStatusHistoryRepository;
 
     public TestTicket checkIfTestTicketNameExists(String name, Feature feature){
         try{
@@ -221,7 +231,7 @@ public class TestTicketService {
         }
     }
     @Transactional(rollbackFor = Exception.class)
-    public void updateExecutionStatusesForDevTicket(String devTicketKey, List<TestTicketExecutionStatusUpdate> updates, ProjectMember changedBy) {
+    public void updateExecutionStatusesForTestTicket(String devTicketKey, List<TestTicketExecutionStatusUpdate> updates, ProjectMember changedBy) {
         try {
             if (updates == null || updates.isEmpty()) {
                 return;
@@ -256,4 +266,112 @@ public class TestTicketService {
             throw new RuntimeException("Failed to update TestTicket statuses for " + devTicketKey, e);
         }
     }
+
+
+    @Transactional(rollbackFor = Exception.class)
+    public TestTicket editTestTicket(String ticketKey, EditTestTicketRequest request, String userName) {
+
+        TestTicket testTicket = testTicketRepository.findByKey(ticketKey);
+        if (testTicket == null) {
+            throw new RuntimeException("TestTicket not found");
+        }
+
+        featureService.validateFeatureEditAccess(testTicket.getProject().getProjectId(), userName, Set.of(ProjectRoles.DEV, ProjectRoles.VIEWER));
+        User user = userRepository.findByUserName(userName);
+
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+
+        OrganizationMember organizationMember = organizationMemberRepository.findByUserAndOrganization(user, testTicket.getProject().getOrganization());
+
+        if (organizationMember == null) {
+            throw new RuntimeException("Organization member not found");
+        }
+
+        ProjectMember changedBy = projectMemberRepository.findByProjectAndOrganizationMember(
+                        testTicket.getProject(),
+                        organizationMember
+                ).orElseThrow(() -> new RuntimeException("Project member not found"));
+
+        boolean ticketChanged = false;
+
+        // Update title
+        if (request.getTitle() != null && !request.getTitle().equals(testTicket.getTitle())) {
+            TestTicket existingTicket = checkIfTestTicketNameExists(request.getTitle(), testTicket.getFeature());
+            if (existingTicket != null && !existingTicket.getKey().equals(testTicket.getKey())) {
+                throw new RuntimeException("TestTicket with this title already exists in this feature");
+            }
+            testTicket.setTitle(request.getTitle());
+            ticketChanged = true;
+        }
+
+        // Update description
+        if (request.getDescription() != null && !Objects.equals(request.getDescription(), testTicket.getDescription())) {
+
+            testTicket.setDescription(request.getDescription());
+            ticketChanged = true;
+        }
+
+        // Update priority
+        if (request.getPriority() != null
+                && request.getPriority() != testTicket.getPriority()) {
+
+            testTicket.setPriority(request.getPriority());
+            ticketChanged = true;
+        }
+
+        // Update test case status
+        if (request.getTestCaseStatus() != null
+                && request.getTestCaseStatus() != testTicket.getTestCaseStatus()) {
+
+            testTicket.setTestCaseStatus(request.getTestCaseStatus());
+            ticketChanged = true;
+        }
+
+        // Update execution status
+        if (request.getExecutionStatus() != null
+                && request.getExecutionStatus() != testTicket.getExecutionStatus()) {
+
+            testTicket.setExecutionStatus(request.getExecutionStatus());
+            ticketChanged = true;
+        }
+
+        if (request.getAssigneeUserName() != null) {
+            User assigneeUser = userRepository.findByUserName(request.getAssigneeUserName());
+            if (assigneeUser == null) {
+                throw new RuntimeException("Assignee user not found");
+            }
+            OrganizationMember assigneeOrganizationMember = organizationMemberRepository.findByUserAndOrganization(assigneeUser, testTicket.getProject().getOrganization());
+            if (assigneeOrganizationMember == null) {
+                throw new RuntimeException("Assignee is not a member of this organization");
+            }
+            ProjectMember assignee = projectMemberRepository.findByProjectAndOrganizationMember(
+                    testTicket.getProject(),
+                    assigneeOrganizationMember).orElseThrow(() -> new RuntimeException("Assignee is not a member of this project"));
+            testTicket.setAssignee(assignee);
+        }
+
+        if (ticketChanged) {
+            testTicket.setUpdatedAt(LocalDateTime.now());
+            testTicket.setUpdatedBy(changedBy);
+
+            if (testTicket.getCurrentRevision() == null) {
+                testTicket.setCurrentRevision(1);
+            } else {
+                testTicket.setCurrentRevision(
+                        testTicket.getCurrentRevision() + 1);
+            }
+
+            TestTicket updatedTicket = testTicketRepository.save(testTicket);
+
+            createRevision(updatedTicket, changedBy);
+
+            return updatedTicket;
+        }
+
+        return testTicket;
+    }
+
+
 }

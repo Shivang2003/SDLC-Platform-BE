@@ -36,6 +36,10 @@ public class TestTicket {
 
     @DBRef
     private ProjectMember createdBy;
+    @DBRef
+    private ProjectMember updatedBy;
+    @DBRef
+    private ProjectMember assignee;
 
     private ObjectId targetVersionId;
     private Priority priority;
