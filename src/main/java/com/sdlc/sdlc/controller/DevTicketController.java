@@ -2,6 +2,7 @@ package com.sdlc.sdlc.controller;
 
 
 import com.sdlc.sdlc.dto.DevTicketDetailsResponse;
+import com.sdlc.sdlc.dto.DevTicketRevisionResponse;
 import com.sdlc.sdlc.dto.EditDevTicketRequest;
 import com.sdlc.sdlc.dto.TestTicketSummaryResponse;
 import com.sdlc.sdlc.entity.*;
@@ -220,6 +221,17 @@ public class DevTicketController {
         }
     }
 
+    @GetMapping("/{ticketKey}/revisions")
+    public ResponseEntity<?> getDevTicketRevisions(@PathVariable String ticketKey) {
+
+        try {
+            List<DevTicketRevisionResponse> revisions = devTicketService.getDevTicketRevisions(ticketKey);
+            return new ResponseEntity<>(revisions, HttpStatus.OK);
+
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.BAD_REQUEST);
+        }
+    }
 
 
 }

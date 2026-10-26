@@ -2,6 +2,7 @@ package com.sdlc.sdlc.service;
 
 
 import com.sdlc.sdlc.dto.CreateDevTicketRequest;
+import com.sdlc.sdlc.dto.DevTicketRevisionResponse;
 import com.sdlc.sdlc.dto.EditDevTicketRequest;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.Priority;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -314,4 +316,151 @@ public class DevTicketService {
 
         return updatedTicket;
     }
+
+//    public List<DevTicketRevisionResponse> getDevTicketRevisions(
+//            String ticketKey) {
+//
+//        DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+//
+//        if (devTicket == null) {
+//            throw new RuntimeException("DevTicket not found");
+//        }
+//
+//        List<DevTicketRevision> revisions = devTicketRevisionRepository.findByTicketKeyOrderByRevisionNumberDesc(ticketKey);
+//
+//
+//        return revisions.stream().map(revision -> {
+//            DevTicketRevisionResponse response =
+//                    new DevTicketRevisionResponse();
+//
+//            response.setTicketKey(revision.getTicketKey());
+//            response.setRevisionNumber(revision.getRevisionNumber());
+//            response.setTitle(revision.getTitle());
+//            response.setDescription(revision.getDescription());
+//
+//            if (revision.getProject() != null) {
+//                response.setProjectId(
+//                        revision.getProject().getProjectId());
+//            }
+//
+//            if (revision.getFeature() != null) {
+//                response.setFeatureId(
+//                        revision.getFeature().getFeatureId());
+//            }
+//
+//            if (revision.getAssignee() != null
+//                    && revision.getAssignee().getOrganizationMember() != null
+//                    && revision.getAssignee().getOrganizationMember().getUser() != null) {
+//                response.setAssigneeUserName(
+//                        revision.getAssignee().getOrganizationMember()
+//                                .getUser().getUserName());
+//            }
+//
+//            if (revision.getCreatedBy() != null
+//                    && revision.getCreatedBy().getOrganizationMember() != null
+//                    && revision.getCreatedBy().getOrganizationMember().getUser() != null) {
+//                response.setCreatedByUserName(
+//                        revision.getCreatedBy().getOrganizationMember()
+//                                .getUser().getUserName());
+//            }
+//
+//            response.setStatus(revision.getStatus());
+//            response.setPriority(revision.getPriority());
+//
+//            if (revision.getChangedBy() != null
+//                    && revision.getChangedBy().getOrganizationMember() != null
+//                    && revision.getChangedBy().getOrganizationMember().getUser() != null) {
+//                response.setChangedByUserName(
+//                        revision.getChangedBy().getOrganizationMember()
+//                                .getUser().getUserName());
+//            }
+//
+//            response.setCreatedAt(revision.getCreatedAt());
+//
+//            return response;
+//        }).toList();
+//    }
+
+
+    public List<DevTicketRevisionResponse> getDevTicketRevisions(String ticketKey) {
+
+        long start = System.currentTimeMillis();
+
+        DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+
+        System.out.println("Find DevTicket: " +
+                (System.currentTimeMillis() - start) + " ms");
+
+        if (devTicket == null) {
+            throw new RuntimeException("DevTicket not found");
+        }
+
+        long queryStart = System.currentTimeMillis();
+
+        List<DevTicketRevision> revisions =
+                devTicketRevisionRepository
+                        .findByTicketKeyOrderByRevisionNumberDesc(ticketKey);
+
+        System.out.println("Fetch revisions: " +
+                (System.currentTimeMillis() - queryStart) + " ms");
+
+        long mapStart = System.currentTimeMillis();
+
+        List<DevTicketRevisionResponse> result = revisions.stream().map(revision -> {
+            DevTicketRevisionResponse response = new DevTicketRevisionResponse();
+
+            response.setTicketKey(revision.getTicketKey());
+            response.setRevisionNumber(revision.getRevisionNumber());
+            response.setTitle(revision.getTitle());
+            response.setDescription(revision.getDescription());
+
+            if (revision.getProject() != null) {
+                response.setProjectId(revision.getProject().getProjectId());
+            }
+
+            if (revision.getFeature() != null) {
+                response.setFeatureId(revision.getFeature().getFeatureId());
+            }
+
+            if (revision.getAssignee() != null
+                    && revision.getAssignee().getOrganizationMember() != null
+                    && revision.getAssignee().getOrganizationMember().getUser() != null) {
+                response.setAssigneeUserName(
+                        revision.getAssignee().getOrganizationMember()
+                                .getUser().getUserName());
+            }
+
+            if (revision.getCreatedBy() != null
+                    && revision.getCreatedBy().getOrganizationMember() != null
+                    && revision.getCreatedBy().getOrganizationMember().getUser() != null) {
+                response.setCreatedByUserName(
+                        revision.getCreatedBy().getOrganizationMember()
+                                .getUser().getUserName());
+            }
+
+            response.setStatus(revision.getStatus());
+            response.setPriority(revision.getPriority());
+
+            if (revision.getChangedBy() != null
+                    && revision.getChangedBy().getOrganizationMember() != null
+                    && revision.getChangedBy().getOrganizationMember().getUser() != null) {
+                response.setChangedByUserName(
+                        revision.getChangedBy().getOrganizationMember()
+                                .getUser().getUserName());
+            }
+
+            response.setCreatedAt(revision.getCreatedAt());
+
+            return response;
+        }).toList();
+
+        System.out.println("Map revisions: " +
+                (System.currentTimeMillis() - mapStart) + " ms");
+
+        System.out.println("Total service time: " +
+                (System.currentTimeMillis() - start) + " ms");
+
+        return result;
+    }
+
 }
