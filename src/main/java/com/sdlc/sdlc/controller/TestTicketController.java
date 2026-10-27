@@ -53,6 +53,9 @@ public class TestTicketController {
     @Autowired
     TestTicketBugTicketLinkRepository testTicketBugTicketLinkRepository;
 
+    @Autowired
+    UserRepository userRepository;
+
 
     @PostMapping("/{testTicketKey}/create-manual-bugs")
     public ResponseEntity<?> createBugTicketManually(@PathVariable String testTicketKey, @RequestBody CreateBugTicketRequest request) {
@@ -174,6 +177,8 @@ public class TestTicketController {
 
             List<BugTicket> bugTickets = bugTicketRepository.findByTestCase_Id(testTicket.getId());
 
+            String assignedUser = userRepository.findByUserId(testTicket.getAssignee().getUserId()).getUserName();
+
             TestTicketDetailsResponse testTicketResponse =
                     new TestTicketDetailsResponse(
                             testTicket.getKey(),
@@ -185,7 +190,10 @@ public class TestTicketController {
                             testTicket.getCurrentRevision(),
                             testTicket.getTargetVersionId(),
                             testTicket.getProject().getProjectId(),
-                            testTicket.getFeature().getFeatureId()
+                            testTicket.getFeature().getFeatureId(),
+                            testTicket.getAssignee() != null
+                                    ? assignedUser
+                                    : null
                     );
 
             List<BugTicketSummaryResponse> bugTicketResponses = bugTickets.stream()

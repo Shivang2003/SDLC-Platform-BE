@@ -4,6 +4,7 @@ package com.sdlc.sdlc.service;
 import com.sdlc.sdlc.dto.CreateCommentRequest;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.ProjectRoles;
+import com.sdlc.sdlc.enums.TicketType;
 import com.sdlc.sdlc.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,19 +45,53 @@ public class CommentService {
     @Autowired
     UserService userService;
 
+
     public TicketComments addComment(
             String ticketKey,
             CreateCommentRequest request,
             String userName) {
 
-        DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+        String projectId;
 
-        if (devTicket == null) {
-            throw new RuntimeException("DevTicket not found");
+        if (request.getTicketType() == TicketType.DEV) {
+
+            DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+
+            if (devTicket == null) {
+                throw new RuntimeException("DevTicket not found");
+            }
+
+            projectId = devTicket.getProject().getProjectId();
+
+        } else if (request.getTicketType() == TicketType.TEST) {
+
+            TestTicket testTicket = testTicketRepository.findByKey(ticketKey);
+
+            if (testTicket == null) {
+                throw new RuntimeException("TestTicket not found");
+            }
+
+            projectId = testTicket.getProject().getProjectId();
+
+        } else {
+
+            BugTicket bugTicket = bugTicketRepository.findByKey(ticketKey);
+
+            if (bugTicket == null) {
+                throw new RuntimeException("BugTicket not found");
+            }
+
+            projectId = bugTicket.getProject().getProjectId();
         }
+
         User commentUser = userService.findByUserName(userName);
+
         // Validate edit access
-        featureService.validateFeatureEditAccess(devTicket.getProject().getProjectId(), userName, Set.of(ProjectRoles.VIEWER));
+        featureService.validateFeatureEditAccess(
+                projectId,
+                userName,
+                Set.of(ProjectRoles.VIEWER)
+        );
 
         TicketComments ticketComments =
                 ticketCommentsRepository
@@ -75,11 +110,13 @@ public class CommentService {
                 new TicketComments.CommentItem();
 
         commentItem.setCommentId("COM-" + UUID.randomUUID());
+
         TicketComments.UserDetails userDetails =
                 new TicketComments.UserDetails();
 
         userDetails.setUserId(commentUser.getUserId());
         userDetails.setUserName(commentUser.getUserName());
+
         commentItem.setUser(userDetails);
         commentItem.setTime(LocalDateTime.now());
         commentItem.setComment(request.getComment());
@@ -88,6 +125,7 @@ public class CommentService {
 
         return ticketCommentsRepository.save(ticketComments);
     }
+
 
 
     public MentionConfig getMentionConfig(String projectId) {

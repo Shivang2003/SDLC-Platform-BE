@@ -10,9 +10,12 @@ import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.DevTicketRepository;
 import com.sdlc.sdlc.repository.ProjectRepository;
+import com.sdlc.sdlc.repository.UserNameProjection;
+import com.sdlc.sdlc.repository.UserRepository;
 import com.sdlc.sdlc.service.DevTicketService;
 import com.sdlc.sdlc.service.FeatureService;
 import com.sdlc.sdlc.service.TestTicketService;
+import com.sdlc.sdlc.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.ReactiveDatabaseCallback;
@@ -51,6 +54,9 @@ public class DevTicketController {
 
     @Autowired
     ProjectRepository projectRepository;
+
+    @Autowired
+    UserRepository userRepository;
 
     @PatchMapping("/{ticketKey}/status")
     public ResponseEntity<?> updateDevTicketStatus(@PathVariable String ticketKey, @RequestBody Map<String, TicketStatus> request) {
@@ -125,6 +131,8 @@ public class DevTicketController {
                             devTicket.getKey()
                     );
 
+            String assignedUser = userRepository.findByUserId(devTicket.getAssignee().getUserId()).getUserName();
+
             DevTicketDetailsResponse devTicketResponse =
                     new DevTicketDetailsResponse(
                             devTicket.getKey(),
@@ -135,7 +143,10 @@ public class DevTicketController {
                             devTicket.getCurrentRevision(),
                             devTicket.getTargetVersionId(),
                             devTicket.getProject().getProjectId(),
-                            devTicket.getFeature().getFeatureId()
+                            devTicket.getFeature().getFeatureId(),
+                            devTicket.getAssignee() != null
+                                    ? assignedUser
+                                    : null
                     );
 
             List<TestTicketSummaryResponse> testTicketResponses =

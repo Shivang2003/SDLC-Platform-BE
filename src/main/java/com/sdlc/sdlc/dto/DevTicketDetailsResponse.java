@@ -19,4 +19,5 @@ public class DevTicketDetailsResponse {
     private ObjectId targetVersionId;
     private String projectId;
     private String featureId;
+    private String assignedTo;
 }

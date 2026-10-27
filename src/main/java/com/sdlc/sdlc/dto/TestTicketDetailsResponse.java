@@ -25,4 +25,5 @@ public class TestTicketDetailsResponse {
 
     private String projectId;
     private String featureId;
+    private String assignee;
 }
