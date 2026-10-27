@@ -26,7 +26,7 @@ public class TicketComments {
     @Data
     public static class CommentItem {
         private String commentId;
-        private String userName;
+        private String userId;
         private LocalDateTime time;
         private Map<String, Object> comment;
     }

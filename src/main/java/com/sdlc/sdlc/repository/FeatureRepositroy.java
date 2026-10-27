@@ -3,6 +3,7 @@ package com.sdlc.sdlc.repository;
 import com.sdlc.sdlc.entity.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 import java.util.List;
 
@@ -10,4 +11,7 @@ public interface FeatureRepositroy extends MongoRepository<Feature, ObjectId> {
     Feature findByNameAndProject(String name, Project project);
     Feature findByFeatureId(String featureId);
     List<Feature> findByProject(Project project);
+    @Query(value = "{ 'featureId': ?0 }",
+            fields = "{ 'devTicketId': 1, 'testTicketId': 1, 'bugTicketId': 1 }")
+    FeatureTicketIds findTicketIdsByFeatureId(String featureId);
 }
