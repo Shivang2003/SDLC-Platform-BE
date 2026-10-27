@@ -7,10 +7,7 @@ import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.BugStatus;
 import com.sdlc.sdlc.enums.Priority;
 import com.sdlc.sdlc.enums.Severity;
-import com.sdlc.sdlc.repository.BugTicketRepository;
-import com.sdlc.sdlc.repository.ProjectMemberRepository;
-import com.sdlc.sdlc.repository.TestTicketBugTicketLinkRepository;
-import com.sdlc.sdlc.repository.UserRepository;
+import com.sdlc.sdlc.repository.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -42,10 +39,14 @@ public class BugTicketService {
     @Autowired
     TestTicketBugTicketLinkRepository testTicketBugTicketLinkRepository;
 
+    @Autowired
+    FeatureRepositroy featureRepositroy;
+
     public BugTicket createManualBugTicket(
             BugTicket bugTicket,
             TestTicket testTicket,
-            ProjectMember createdBy) {
+            ProjectMember createdBy,
+            Feature feature) {
 
         try {
             if (bugTicket.getTitle() == null
@@ -60,8 +61,8 @@ public class BugTicketService {
             if (bugTicket.getSeverity() == null) {
                 throw new IllegalArgumentException("Severity is required");
             }
-
-            bugTicket.setKey(idGeneratorService.generateSequenceId("bugTicket","BUG"));
+            String bugTicketkey = idGeneratorService.generateSequenceId("bugTicket","BUG");
+            bugTicket.setKey(bugTicketkey);
 
             bugTicket.setTestCase(testTicket);
             bugTicket.setProject(testTicket.getProject());
@@ -76,6 +77,13 @@ public class BugTicketService {
             LocalDateTime now = LocalDateTime.now();
             bugTicket.setCreatedAt(now);
             bugTicket.setUpdatedAt(now);
+
+            Feature featureContatiningBugTicket = featureRepositroy.findByFeatureId(feature.getFeatureId());
+            if (featureContatiningBugTicket.getBugTicketId() == null) {
+                featureContatiningBugTicket.setBugTicketId(new ArrayList<>());
+            }
+            featureContatiningBugTicket.getBugTicketId().add(bugTicketkey);
+            featureRepositroy.save(featureContatiningBugTicket);
 
             return bugTicketRepository.save(bugTicket);
 
@@ -100,10 +108,11 @@ public class BugTicketService {
     public BugTicket createManualBugTicketWithLink(
             BugTicket bugTicket,
             TestTicket testTicket,
-            ProjectMember createdBy) {
+            ProjectMember createdBy,
+            Feature feature) {
 
         BugTicket savedBugTicket =
-                createManualBugTicket(bugTicket, testTicket, createdBy);
+                createManualBugTicket(bugTicket, testTicket, createdBy, feature);
 
         createTestTicketBugTicketLink(testTicket, savedBugTicket);
 

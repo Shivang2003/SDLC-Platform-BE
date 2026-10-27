@@ -103,7 +103,7 @@ public class TestTicketController {
             BugTicket bugTicket = bugTicketService.mapToBugTicket(request, testTicket.getFeature(), testTicket);
 
             // Save the BugTicket and its link
-            BugTicket savedBugTicket = bugTicketService.createManualBugTicketWithLink(bugTicket, testTicket, createdBy);
+            BugTicket savedBugTicket = bugTicketService.createManualBugTicketWithLink(bugTicket, testTicket, createdBy, devTicket.getFeature());
 
             BugTicketResponse response = bugTicketService.toResponse(savedBugTicket);
 
