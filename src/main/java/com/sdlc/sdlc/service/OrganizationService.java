@@ -2,6 +2,7 @@ package com.sdlc.sdlc.service;
 
 
 import com.sdlc.sdlc.entity.Organization;
+import com.sdlc.sdlc.enums.OrganizationRoles;
 import com.sdlc.sdlc.repository.OrganizationMemberRepository;
 import com.sdlc.sdlc.repository.OrganizationRepository;
 import com.sdlc.sdlc.repository.UserRepository;
@@ -38,12 +39,12 @@ public class OrganizationService {
         }
         organization.getUserId().add(user.getUserId());
         Organization savedOrganization = organizationRepository.save(organization);
-        addMemberToOrganization(savedOrganization, user, "OWNER");
+        addMemberToOrganization(savedOrganization, user, OrganizationRoles.OWNER);
         log.info("New organization created: {}", savedOrganization.getName());
         return savedOrganization;
     }
 
-    public OrganizationMember addMemberToOrganization(Organization organization, User user, String role) {
+    public OrganizationMember addMemberToOrganization(Organization organization, User user, OrganizationRoles role) {
         OrganizationMember existingMember = organizationMemberRepository.findByUserAndOrganization(user, organization);
         if (existingMember != null) {
             throw new IllegalStateException("User is already a member of this organization");

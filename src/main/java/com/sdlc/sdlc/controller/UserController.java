@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,4 +54,25 @@ public class UserController {
         }
 
     }
+
+    @GetMapping("/allUsers")
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+            List<Map<String, String>> users = userRepository.findAll()
+                    .stream()
+                    .filter(user -> user.getUserId() != null)
+                    .map(user -> Map.of(
+                            "userId", user.getUserId(),
+                            "userName", user.getUserName()
+                    ))
+                    .toList();
+
+            return new ResponseEntity<>(users, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+    }
+
 }

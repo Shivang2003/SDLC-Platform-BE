@@ -3,6 +3,7 @@ package com.sdlc.sdlc.controller;
 
 import com.sdlc.sdlc.dto.AddOrganizationMemberRequest;
 import com.sdlc.sdlc.entity.*;
+import com.sdlc.sdlc.enums.OrganizationRoles;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.service.OrganizationService;
 import com.sdlc.sdlc.service.ProjectService;
@@ -45,21 +46,21 @@ public class OrganizationController {
             if (organization == null) {
                 return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
             }
-//            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
-//            if (organizationMember == null) {
-//                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
-//            }
-//            if (!organizationMember.getRole().equals("ADMIN") && !organizationMember.getRole().equals("OWNER")) {
-//                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can add users"), HttpStatus.FORBIDDEN
-//                );
-//            }
+            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
+            if (organizationMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
+            }
+            if (!organizationMember.getRole().equals(OrganizationRoles.ADMIN) && !organizationMember.getRole().equals(OrganizationRoles.OWNER)) {
+                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can add users"), HttpStatus.FORBIDDEN
+                );
+            }
 
             User userInDb = userService.findByUserName(organizationMemberRequest.getUserName());
             if (userInDb == null) {
                 return new ResponseEntity<>(new ErrorResponse("User doesn't exist"), HttpStatus.NOT_FOUND
                 );
             }
-            OrganizationMember addedOrganizationMember = organizationService.addMemberToOrganization(organization, userInDb, "VIEWER");
+            OrganizationMember addedOrganizationMember = organizationService.addMemberToOrganization(organization, userInDb, organizationMemberRequest.getRole());
             if(addedOrganizationMember == null){
                 return new ResponseEntity<>(new ErrorResponse("User is already a member of the organization"), HttpStatus.CONFLICT);
             }
@@ -112,7 +113,7 @@ public class OrganizationController {
             if (organizationMember == null) {
                 return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
             }
-            if (!organizationMember.getRole().equals("ADMIN") && !organizationMember.getRole().equals("OWNER")) {
+            if (!organizationMember.getRole().equals(OrganizationRoles.ADMIN) && !organizationMember.getRole().equals(OrganizationRoles.OWNER)) {
                 return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can create projects"), HttpStatus.FORBIDDEN);
             }
 

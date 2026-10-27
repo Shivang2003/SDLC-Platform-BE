@@ -1,5 +1,6 @@
 package com.sdlc.sdlc.entity;
 
+import com.sdlc.sdlc.enums.OrganizationRoles;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
@@ -19,6 +20,6 @@ public class OrganizationMember {
     private User user;
     @DBRef
     private Organization organization;
-    private String role;
+    private OrganizationRoles role;
     private String userId;
 }
