@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface TicketCommentsRepository extends MongoRepository<TicketComments, String> {
     Optional<TicketComments> findByTicketKeyAndTicketType(String ticketKey, TicketType ticketType);
+    Optional<TicketComments> findByTicketKey(String ticketKey);
 }

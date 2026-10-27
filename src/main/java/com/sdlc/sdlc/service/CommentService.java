@@ -75,7 +75,12 @@ public class CommentService {
                 new TicketComments.CommentItem();
 
         commentItem.setCommentId("COM-" + UUID.randomUUID());
-        commentItem.setUserId(commentUser.getUserId());
+        TicketComments.UserDetails userDetails =
+                new TicketComments.UserDetails();
+
+        userDetails.setUserId(commentUser.getUserId());
+        userDetails.setUserName(commentUser.getUserName());
+        commentItem.setUser(userDetails);
         commentItem.setTime(LocalDateTime.now());
         commentItem.setComment(request.getComment());
 
@@ -83,6 +88,7 @@ public class CommentService {
 
         return ticketCommentsRepository.save(ticketComments);
     }
+
 
     public MentionConfig getMentionConfig(String projectId) {
 
@@ -97,6 +103,9 @@ public class CommentService {
                 .orElseThrow(() ->
                         new RuntimeException("Mention configuration not found"));
 
+        String frontendUrl = "http://localhost:5173";
+        String organizationId = project.getOrganization().getOrganizationId();
+
         // USER mentions
         List<Map<String, Object>> users = userRepository
                 .findByUserIdIn(project.getUserId())
@@ -107,50 +116,93 @@ public class CommentService {
                 ))
                 .toList();
 
+        // Fetch project features
+        List<Feature> features = featureRepositroy.findByProject(project);
+
         // TICKET mentions
         List<Map<String, Object>> tickets = new ArrayList<>();
 
-        tickets.addAll(devTicketRepository
-                .findMentionValuesByProjectId(project.getId())
-                .stream()
-                .map(ticket -> Map.<String, Object>of(
-                        "ticketKey", ticket.getKey(),
-                        "title", ticket.getTitle()
-                ))
-                .toList());
+        for (Feature feature : features) {
 
-        tickets.addAll(testTicketRepository
-                .findMentionValuesByProjectId(project.getId())
-                .stream()
-                .map(ticket -> Map.<String, Object>of(
-                        "ticketKey", ticket.getKey(),
-                        "title", ticket.getTitle()
-                ))
-                .toList());
+            String featureBaseUrl = frontendUrl
+                    + "/organizations/" + organizationId
+                    + "/projects/" + project.getProjectId()
+                    + "/features/" + feature.getFeatureId()
+                    + "?view=projects";
 
-        tickets.addAll(bugTicketRepository
-                .findMentionValuesByProjectId(project.getId())
-                .stream()
-                .map(ticket -> Map.<String, Object>of(
-                        "ticketKey", ticket.getKey(),
-                        "title", ticket.getTitle()
-                ))
-                .toList());
+            // Development tickets
+            if (feature.getDevTicketId() != null) {
+                for (String ticketKey : feature.getDevTicketId()) {
+
+                    DevTicket ticket = devTicketRepository.findByKey(ticketKey);
+
+                    if (ticket != null) {
+                        tickets.add(Map.of(
+                                "ticketKey", ticket.getKey(),
+                                "title", ticket.getTitle(),
+                                "baseURL", featureBaseUrl
+                                        + "&ticket=" + ticket.getKey()
+                                        + "&ticketType=development"
+                        ));
+                    }
+                }
+            }
+
+            // Test tickets
+            if (feature.getTestTicketId() != null) {
+                for (String ticketKey : feature.getTestTicketId()) {
+
+                    TestTicket ticket = testTicketRepository.findByKey(ticketKey);
+
+                    if (ticket != null) {
+                        tickets.add(Map.of(
+                                "ticketKey", ticket.getKey(),
+                                "title", ticket.getTitle(),
+                                "baseURL", featureBaseUrl
+                                        + "&ticket=" + ticket.getKey()
+                                        + "&ticketType=test"
+                        ));
+                    }
+                }
+            }
+
+            // Bug tickets
+            if (feature.getBugTicketId() != null) {
+                for (String ticketKey : feature.getBugTicketId()) {
+
+                    BugTicket ticket = bugTicketRepository.findByKey(ticketKey);
+
+                    if (ticket != null) {
+                        tickets.add(Map.of(
+                                "ticketKey", ticket.getKey(),
+                                "title", ticket.getTitle(),
+                                "baseURL", featureBaseUrl
+                                        + "&ticket=" + ticket.getKey()
+                                        + "&ticketType=bug"
+                        ));
+                    }
+                }
+            }
+        }
 
         // FEATURE mentions
-        List<Map<String, Object>> features = featureRepositroy
-                .findByProject(project)
-                .stream()
+        List<Map<String, Object>> featureValues = features.stream()
                 .map(feature -> Map.<String, Object>of(
                         "featureKey", feature.getFeatureId(),
-                        "title", feature.getName()
+                        "title", feature.getName(),
+                        "baseURL", frontendUrl
+                                + "/organizations/" + organizationId
+                                + "/projects/" + project.getProjectId()
+                                + "/features/" + feature.getFeatureId()
+                                + "?view=projects"
                 ))
                 .toList();
 
         config.getMentions().get("@").setValues(users);
         config.getMentions().get("#").setValues(tickets);
-        config.getMentions().get("$").setValues(features);
+        config.getMentions().get("$").setValues(featureValues);
 
         return config;
     }
+
 }
