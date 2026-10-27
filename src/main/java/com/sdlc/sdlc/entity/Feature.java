@@ -9,6 +9,9 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Data
 @Document(collection = "features")
@@ -35,7 +38,9 @@ public class Feature {
     private FeatureStatus status;
 
     private ObjectId targetVersionId;
-
+    private List<String> devTicketId = new ArrayList<>();
+    private List<String> testTicketId = new ArrayList<>();
+    private List<String> bugTicketId = new ArrayList<>();
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

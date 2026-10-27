@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -52,6 +53,9 @@ public class DevTicketService {
     OrganizationMemberRepository organizationMemberRepository;
 
     @Autowired
+    FeatureRepositroy featureRepositroy;
+
+    @Autowired
     TestTicketRepository testTicketRepository;
 
     public DevTicket checkIfDevTicketNameExists(String name, Feature feature){
@@ -78,8 +82,8 @@ public class DevTicketService {
 
         try{
             LocalDateTime now = LocalDateTime.now();
-
-            devTicket.setKey(idGeneratorService.generateSequenceId("devTicket","DEV"));
+            String devTicketId = idGeneratorService.generateSequenceId("devTicket","DEV");
+            devTicket.setKey(devTicketId);
             devTicket.setFeature(feature);
             devTicket.setProject(feature.getProject());
             devTicket.setCreatedBy(createdBy);
@@ -93,6 +97,13 @@ public class DevTicketService {
             devTicket.setCreatedAt(now);
             devTicket.setUpdatedAt(now);
             devTicket.setUpdatedBy(createdBy);
+
+            Feature featureContatiningDevTicket = featureRepositroy.findByFeatureId(feature.getFeatureId());
+            if (featureContatiningDevTicket.getDevTicketId() == null) {
+                featureContatiningDevTicket.setDevTicketId(new ArrayList<>());
+            }
+            featureContatiningDevTicket.getDevTicketId().add(devTicketId);
+            featureRepositroy.save(featureContatiningDevTicket);
 
             DevTicket savedTicket = devTicketRepository.save(devTicket);
 

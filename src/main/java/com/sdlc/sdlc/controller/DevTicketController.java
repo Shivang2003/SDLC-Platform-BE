@@ -191,7 +191,7 @@ public class DevTicketController {
                 return ResponseEntity.badRequest().body(new ErrorResponse("Feature does not belong to this project"));
             }
 
-            List<DevTicket> devTickets = devTicketRepository.findByProjectAndFeature(project, feature);
+            List<DevTicket> devTickets = devTicketRepository.findByProjectIdAndFeatureId(project.getId(), feature.getId());
 
             Map<String, String> response = devTickets.stream()
                     .collect(Collectors.toMap(

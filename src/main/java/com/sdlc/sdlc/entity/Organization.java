@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -21,5 +22,7 @@ public class Organization {
 
     private String name;
     private String description;
+    private List<String> projectId = new ArrayList<>();;
+    private List<String> userId = new ArrayList<>();;
 
 }

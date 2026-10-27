@@ -6,6 +6,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.List;
+
 @Data
 @Document(collection = "organization_members")
 public class OrganizationMember {
@@ -18,4 +20,5 @@ public class OrganizationMember {
     @DBRef
     private Organization organization;
     private String role;
+    private String userId;
 }

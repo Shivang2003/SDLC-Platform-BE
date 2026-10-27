@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import com.sdlc.sdlc.entity.User;
 import com.sdlc.sdlc.entity.OrganizationMember;
 
+import java.util.ArrayList;
+
 @Service
 @Slf4j
 public class OrganizationService {
@@ -30,6 +32,11 @@ public class OrganizationService {
 
     public Organization createNewOrganization(Organization organization, User user) {
         organization.setOrganizationId(idGeneratorService.generateSequenceId("organization", "ORG"));
+        organization.setProjectId(null);
+        if (organization.getUserId() == null) {
+            organization.setUserId(new ArrayList<>());
+        }
+        organization.getUserId().add(user.getUserId());
         Organization savedOrganization = organizationRepository.save(organization);
         addMemberToOrganization(savedOrganization, user, "OWNER");
         log.info("New organization created: {}", savedOrganization.getName());
@@ -45,6 +52,8 @@ public class OrganizationService {
         organizationMember.setOrganization(organization);
         organizationMember.setUser(user);
         organizationMember.setRole(role);
+        organizationMember.setUserId(user.getUserId());
+        organizationMember.setUserId(user.getUserId());
         return organizationMemberRepository.save(organizationMember);
     }
 

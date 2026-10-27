@@ -22,7 +22,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.management.relation.Role;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -69,11 +71,19 @@ public class PublicController {
                 .maxAge(Duration.ofHours(1))
                 .sameSite("Lax")
                 .build();
-
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return new ResponseEntity<>(Map.of("message", "Login successful"),headers,HttpStatus.OK);
+        User userVerified = userService.findByUserName(user.getUserName());
+
+        Map<String, Object> response = Map.of(
+                "message", "Login successful",
+                "userName", userVerified.getUserName(),
+                "email", userVerified.getEmail(),
+                "roles", userVerified.getRoles()
+        );
+
+        return new ResponseEntity<>(response, headers, HttpStatus.OK);
     }
 
     @PostMapping("/logout")

@@ -18,6 +18,9 @@ public class UserService {
     @Autowired
     UserRepository userRepository;
 
+    @Autowired
+    IdGeneratorService idGeneratorService;
+
     private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     public boolean createNewUser(User user) {
@@ -30,6 +33,7 @@ public class UserService {
            }
            user.setPassword(passwordEncoder.encode(user.getPassword()));
            user.setRoles(Arrays.asList("USER"));
+           user.setUserId(idGeneratorService.generateSequenceId("user","UID"));
            userRepository.save(user);
            log.info("New user created: {}", user.getUserName());
            return true;

@@ -5,11 +5,14 @@ import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.entity.OrganizationMember;
 import com.sdlc.sdlc.entity.Project;
 import com.sdlc.sdlc.entity.ProjectMember;
+import com.sdlc.sdlc.repository.OrganizationRepository;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.repository.ProjectRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 
 @Service
 @Slf4j
@@ -23,6 +26,9 @@ public class ProjectService {
 
     @Autowired
     public IdGeneratorService idGeneratorService;
+
+    @Autowired
+    OrganizationRepository organizationRepository;
 
     public Project checkProjectNameExists(Organization organization,String projectName) {
         try {
@@ -45,9 +51,19 @@ public class ProjectService {
 
     public Project createNewProject(Organization organization, Project project, OrganizationMember organizationMember) {
         try {
-            project.setProjectId(idGeneratorService.generateSequenceId("project", "PRJ"));
-            //need to check project id for n ow
+            String projectId = idGeneratorService.generateSequenceId("project", "PRJ");
+            project.setProjectId(projectId);
+            Organization organizationContainingProject = organizationRepository.findByOrganizationId(organization.getOrganizationId());
+            if (organizationContainingProject.getProjectId() == null) {
+                organizationContainingProject.setProjectId(new ArrayList<>());
+            }
+            organizationContainingProject.getProjectId().add(projectId);
+            organizationRepository.save(organizationContainingProject);
             project.setOrganization(organization);
+            if (project.getUserId() == null) {
+                project.setUserId(new ArrayList<>());
+            }
+            project.getUserId().add(organizationMember.getUserId());
             Project savedProject = projectRepository.save(project);
             addMemberToProject(organizationMember, savedProject, "ADMIN");
             return savedProject;
@@ -71,6 +87,7 @@ public class ProjectService {
             projectMember.setOrganizationMember(organizationMember);
             projectMember.setProject(project);
             projectMember.setRole(role);
+            projectMember.setUserId(organizationMember.getUserId());
 
             return projectMemberRepository.save(projectMember);
 

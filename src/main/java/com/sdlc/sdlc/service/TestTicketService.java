@@ -48,6 +48,9 @@ public class TestTicketService {
     @Autowired
     TestTicketStatusHistoryRepository testTicketStatusHistoryRepository;
 
+    @Autowired
+    FeatureRepositroy featureRepositroy;
+
     public TestTicket checkIfTestTicketNameExists(String name, Feature feature){
         try{
             TestTicket testTicket = testTicketRepository.findByTitleAndFeature(name, feature);
@@ -64,9 +67,8 @@ public class TestTicketService {
 
         try {
             LocalDateTime now = LocalDateTime.now();
-
-            testTicket.setKey(
-                    idGeneratorService.generateSequenceId("testTicket", "TC"));
+            String testTicketKey = idGeneratorService.generateSequenceId("testTicket", "TC");
+            testTicket.setKey(testTicketKey);
 
             testTicket.setFeature(feature);
             testTicket.setProject(feature.getProject());
@@ -80,6 +82,13 @@ public class TestTicketService {
 
             testTicket.setCreatedAt(now);
             testTicket.setUpdatedAt(now);
+
+            Feature featureContatiningTestTicket = featureRepositroy.findByFeatureId(feature.getFeatureId());
+            if (featureContatiningTestTicket.getTestTicketId() == null) {
+                featureContatiningTestTicket.setTestTicketId(new ArrayList<>());
+            }
+            featureContatiningTestTicket.getTestTicketId().add(testTicketKey);
+            featureRepositroy.save(featureContatiningTestTicket);
 
             TestTicket savedTicket = testTicketRepository.save(testTicket);
 

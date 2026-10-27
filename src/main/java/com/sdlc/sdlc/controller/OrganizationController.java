@@ -45,14 +45,14 @@ public class OrganizationController {
             if (organization == null) {
                 return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
             }
-            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
-            if (organizationMember == null) {
-                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
-            }
-            if (!organizationMember.getRole().equals("ADMIN") && !organizationMember.getRole().equals("OWNER")) {
-                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can add users"), HttpStatus.FORBIDDEN
-                );
-            }
+//            OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
+//            if (organizationMember == null) {
+//                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
+//            }
+//            if (!organizationMember.getRole().equals("ADMIN") && !organizationMember.getRole().equals("OWNER")) {
+//                return new ResponseEntity<>(new ErrorResponse("Only ADMIN or OWNER can add users"), HttpStatus.FORBIDDEN
+//                );
+//            }
 
             User userInDb = userService.findByUserName(organizationMemberRequest.getUserName());
             if (userInDb == null) {

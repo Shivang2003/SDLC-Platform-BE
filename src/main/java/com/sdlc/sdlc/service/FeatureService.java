@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -81,17 +82,24 @@ public class FeatureService {
     public Feature createNewFeature(Feature feature, Project project, ProjectMember createdBy){
         try {
             LocalDateTime now = LocalDateTime.now();
-
+            String featureId = idGeneratorService.generateSequenceId("feature", "FTR");
             feature.setId(null);
-            feature.setKey(idGeneratorService.generateSequenceId("feature", "FTR"));
+            feature.setKey(featureId);
             feature.setFeatureId(feature.getKey());
             feature.setProject(project);
             feature.setCreatedBy(createdBy);
-
+            feature.setDevTicketId(null);
+            feature.setTestTicketId(null);
+            feature.setBugTicketId(null);
             if (feature.getStatus() == null) {
                 feature.setStatus(FeatureStatus.PLANNED);
             }
-
+            Project projectContainingFeature = projectRepository.findByProjectId(project.getProjectId());
+            if (projectContainingFeature.getFeatureId() == null) {
+                projectContainingFeature.setFeatureId(new ArrayList<>());
+            }
+            projectContainingFeature.getFeatureId().add(featureId);
+            projectRepository.save(projectContainingFeature);
             feature.setCreatedAt(now);
             feature.setUpdatedAt(now);
 
