@@ -210,13 +210,14 @@ public class CommentService {
 
                     BugTicket ticket = bugTicketRepository.findByKey(ticketKey);
 
-                    if (ticket != null) {
+                    if (ticket != null && ticket.getTestCase() != null) {
                         tickets.add(Map.of(
                                 "ticketKey", ticket.getKey(),
                                 "title", ticket.getTitle(),
                                 "baseURL", featureBaseUrl
-                                        + "&ticket=" + ticket.getKey()
-                                        + "&ticketType=bug"
+                                        + "&ticket=" + ticket.getTestCase().getKey()
+                                        + "&ticketType=test"
+                                        + "&bug=" + ticket.getKey()
                         ));
                     }
                 }
