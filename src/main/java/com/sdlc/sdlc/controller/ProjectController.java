@@ -163,7 +163,7 @@ public class ProjectController {
             }
             String role = userDetails.getRole();
 
-            if (!List.of("ADMIN", "MEMBER", "VIEWER").contains(role)) {
+            if (!List.of("ADMIN", "VIEWER", "WORKER", "OWNER").contains(role)) {
                 return new ResponseEntity<>(new ErrorResponse("Invalid project role"), HttpStatus.BAD_REQUEST);
             }
 
