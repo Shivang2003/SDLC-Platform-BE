@@ -114,7 +114,6 @@ public class TestTicketService {
             Feature feature) {
 
         TestTicket testTicket = new TestTicket();
-
         testTicket.setTitle(request.getTitle());
         testTicket.setDescription(request.getDescription());
 
@@ -124,6 +123,34 @@ public class TestTicketService {
 
         testTicket.setFeature(feature);
         testTicket.setProject(feature.getProject());
+
+//        User assigneeUser= userRepository.findByUserName(request.getAssignee());
+//        ProjectMember assigneeMember= projectMemberRepository.findByUserId(assigneeUser.getUserId());
+//        testTicket.setAssignee(assigneeMember);
+        if (request.getAssignee() != null && !request.getAssignee().isBlank()) {
+
+            User assignedUser = userRepository.findByUserName(request.getAssignee());
+            if (assignedUser == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignee user not found");
+            }
+            List<ProjectMember> projectMembers = projectMemberRepository.findByProject_Id(feature.getProject().getId());
+            ProjectMember assignee = projectMembers.stream()
+                    .filter(member ->
+                            member.getOrganizationMember() != null
+                                    && member.getOrganizationMember().getUser() != null
+                                    && member.getOrganizationMember().getUser()
+                                    .getId().equals(assignedUser.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST,
+                            "Assignee is not a member of this project"
+                    ));
+
+            testTicket.setAssignee(assignee);
+        }
+        else{
+            return null;
+        }
 
         return testTicket;
     }

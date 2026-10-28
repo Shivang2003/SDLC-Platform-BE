@@ -6,6 +6,7 @@ import lombok.Data;
 import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class DevTicketRevisionResponse {
@@ -20,6 +21,7 @@ public class DevTicketRevisionResponse {
     private String createdByUserName;
     private TicketStatus status;
     private Priority priority;
+    private List<String> changedFields;
     private String changedByUserName;
     private LocalDateTime createdAt;
 }

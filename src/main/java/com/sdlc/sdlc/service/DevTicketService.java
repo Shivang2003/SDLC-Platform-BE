@@ -10,16 +10,14 @@ import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketStatus;
 import com.sdlc.sdlc.repository.*;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -107,7 +105,19 @@ public class DevTicketService {
 
             DevTicket savedTicket = devTicketRepository.save(devTicket);
 
-            createRevision(savedTicket, createdBy);
+            createRevision(
+                    savedTicket,
+                    createdBy,
+                    List.of(
+                            "title",
+                            "description",
+                            "assignee",
+                            "status",
+                            "priority",
+                            "feature",
+                            "project"
+                    )
+            );
 
             return savedTicket;
         }
@@ -154,7 +164,11 @@ public class DevTicketService {
         return devTicket;
     }
 
-    public DevTicketRevision createRevision(DevTicket devTicket, ProjectMember changedBy) {
+    public DevTicketRevision createRevision(
+            DevTicket devTicket,
+            ProjectMember changedBy,
+            List<String> changedFields) {
+
         try {
             DevTicketRevision revision = new DevTicketRevision();
 
@@ -171,11 +185,23 @@ public class DevTicketService {
             revision.setPriority(devTicket.getPriority());
             revision.setTargetVersionId(devTicket.getTargetVersionId());
             revision.setChangedBy(changedBy);
+            revision.setChangedFields(new ArrayList<>(changedFields));
             revision.setCreatedAt(LocalDateTime.now());
 
             return devTicketRevisionRepository.save(revision);
 
-        } catch (Exception e) {log.error("Error creating revision for DevTicket {}", devTicket.getKey(), e);throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to create DevTicket revision", e);
+        } catch (Exception e) {
+            log.error(
+                    "Error creating revision for DevTicket {}",
+                    devTicket.getKey(),
+                    e
+            );
+
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Failed to create DevTicket revision",
+                    e
+            );
         }
     }
 
@@ -195,16 +221,21 @@ public class DevTicketService {
 
             // Update ticket
             devTicket.setStatus(newStatus);
+            devTicket.setUpdatedBy(changedBy);
             devTicket.setUpdatedAt(now);
-            devTicket.setCurrentRevision(
-                    devTicket.getCurrentRevision() + 1
-            );
+
+            if (devTicket.getCurrentRevision() == null) {
+                devTicket.setCurrentRevision(1);
+            } else {
+                devTicket.setCurrentRevision(
+                        devTicket.getCurrentRevision() + 1
+                );
+            }
 
             DevTicket updatedTicket = devTicketRepository.save(devTicket);
 
             // Create status history
             DevTicketStatusHistory history = new DevTicketStatusHistory();
-
             history.setDevTicket(updatedTicket);
             history.setPreviousStatus(previousStatus);
             history.setNewStatus(newStatus);
@@ -214,7 +245,11 @@ public class DevTicketService {
             devTicketStatusHistoryRepository.save(history);
 
             // Create revision snapshot
-            createRevision(updatedTicket, changedBy);
+            createRevision(
+                    updatedTicket,
+                    changedBy,
+                    List.of("status")
+            );
 
             return updatedTicket;
 
@@ -233,6 +268,8 @@ public class DevTicketService {
         }
     }
 
+
+
     public DevTicket editDevTicket(
             String ticketKey,
             EditDevTicketRequest request,
@@ -244,27 +281,36 @@ public class DevTicketService {
             throw new RuntimeException("DevTicket not found");
         }
 
-        // Validate edit access
-        featureService.validateFeatureEditAccess(devTicket.getProject().getProjectId(), userName, Set.of(ProjectRoles.TESTER,ProjectRoles.VIEWER));
+        featureService.validateFeatureEditAccess(
+                devTicket.getProject().getProjectId(),
+                userName,
+                Set.of(ProjectRoles.TESTER, ProjectRoles.VIEWER)
+        );
 
-        // Find the logged-in user
         User user = userRepository.findByUserName(userName);
 
         if (user == null) {
             throw new RuntimeException("User not found");
         }
 
-        // Find the user's membership in this project's organization
-        OrganizationMember organizationMember = organizationMemberRepository.findByUserAndOrganization(user, devTicket.getProject().getOrganization());
+        OrganizationMember organizationMember =
+                organizationMemberRepository.findByUserAndOrganization(
+                        user,
+                        devTicket.getProject().getOrganization()
+                );
 
         if (organizationMember == null) {
             throw new RuntimeException("Organization member not found");
         }
 
-        // Find the user's membership in this specific project
-        ProjectMember updatedBy = projectMemberRepository.findByProjectAndOrganizationMember(devTicket.getProject(),organizationMember)
-                .orElseThrow(() -> new RuntimeException("Project member not found"));
+        ProjectMember updatedBy =
+                projectMemberRepository.findByProjectAndOrganizationMember(
+                        devTicket.getProject(),
+                        organizationMember
+                ).orElseThrow(() ->
+                        new RuntimeException("Project member not found"));
 
+        // Update linked TestTicket statuses separately
         if (request.getTestTicketStatuses() != null
                 && !request.getTestTicketStatuses().isEmpty()) {
 
@@ -275,42 +321,90 @@ public class DevTicketService {
             );
         }
 
+        List<String> changedFields = new ArrayList<>();
+
         // Update title
-        if (request.getTitle() != null) {
+        if (request.getTitle() != null
+                && !Objects.equals(devTicket.getTitle(), request.getTitle())) {
+
             devTicket.setTitle(request.getTitle());
+            changedFields.add("title");
         }
 
         // Update description
-        if (request.getDescription() != null) {
+        if (request.getDescription() != null
+                && !Objects.equals(
+                devTicket.getDescription(),
+                request.getDescription())) {
+
             devTicket.setDescription(request.getDescription());
+            changedFields.add("description");
         }
 
         // Update priority
-        if (request.getPriority() != null) {
+        if (request.getPriority() != null
+                && !Objects.equals(
+                devTicket.getPriority(),
+                request.getPriority())) {
+
             devTicket.setPriority(request.getPriority());
+            changedFields.add("priority");
         }
 
         // Update assignee
         if (request.getAssigneeUserName() != null) {
-            User assigneeUser = userRepository.findByUserName(request.getAssigneeUserName());
+
+            User assigneeUser = userRepository.findByUserName(
+                    request.getAssigneeUserName()
+            );
+
             if (assigneeUser == null) {
                 throw new RuntimeException("Assignee user not found");
             }
-            OrganizationMember assigneeOrganizationMember = organizationMemberRepository.findByUserAndOrganization(assigneeUser, devTicket.getProject().getOrganization());
+
+            OrganizationMember assigneeOrganizationMember =
+                    organizationMemberRepository.findByUserAndOrganization(
+                            assigneeUser,
+                            devTicket.getProject().getOrganization()
+                    );
+
             if (assigneeOrganizationMember == null) {
-                throw new RuntimeException("Assignee is not a member of this organization");
+                throw new RuntimeException(
+                        "Assignee is not a member of this organization"
+                );
             }
-            ProjectMember assignee = projectMemberRepository.findByProjectAndOrganizationMember(
+
+            ProjectMember assignee =
+                    projectMemberRepository.findByProjectAndOrganizationMember(
                             devTicket.getProject(),
-                            assigneeOrganizationMember).orElseThrow(() -> new RuntimeException("Assignee is not a member of this project"));
-            devTicket.setAssignee(assignee);
+                            assigneeOrganizationMember
+                    ).orElseThrow(() ->
+                            new RuntimeException(
+                                    "Assignee is not a member of this project"
+                            ));
+
+            ObjectId currentAssigneeId = devTicket.getAssignee() != null
+                    ? devTicket.getAssignee().getId()
+                    : null;
+
+            ObjectId newAssigneeId = assignee.getId();
+
+            if (!Objects.equals(currentAssigneeId, newAssigneeId)) {
+                devTicket.setAssignee(assignee);
+                changedFields.add("assignee");
+            }
+        }
+
+        // No DevTicket fields changed: do not create a revision
+        if (changedFields.isEmpty()) {
+            return devTicket;
         }
 
         // Update audit information
         devTicket.setUpdatedBy(updatedBy);
         devTicket.setUpdatedAt(LocalDateTime.now());
 
-        // Increment revision
+        // Increment revision only when fields actually change
         if (devTicket.getCurrentRevision() == null) {
             devTicket.setCurrentRevision(1);
         } else {
@@ -319,14 +413,16 @@ public class DevTicketService {
             );
         }
 
-        // Save the updated ticket
+        // Save updated ticket
         DevTicket updatedTicket = devTicketRepository.save(devTicket);
 
-        // Create a snapshot of the new revision
-        createRevision(updatedTicket, updatedBy);
+        // Create one snapshot containing all changed fields
+        createRevision(updatedTicket, updatedBy, changedFields);
 
         return updatedTicket;
     }
+
+
 
 //    public List<DevTicketRevisionResponse> getDevTicketRevisions(
 //            String ticketKey) {
@@ -448,7 +544,7 @@ public class DevTicketService {
                         revision.getCreatedBy().getOrganizationMember()
                                 .getUser().getUserName());
             }
-
+            response.setChangedFields(revision.getChangedFields());
             response.setStatus(revision.getStatus());
             response.setPriority(revision.getPriority());
 

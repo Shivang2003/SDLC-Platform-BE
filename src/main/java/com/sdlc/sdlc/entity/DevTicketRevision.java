@@ -10,6 +10,8 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @Document(collection = "dev_ticket_revisions")
@@ -52,4 +54,5 @@ public class DevTicketRevision {
     private ProjectMember changedBy;
 
     private LocalDateTime createdAt;
+    private List<String> changedFields = new ArrayList<>();
 }

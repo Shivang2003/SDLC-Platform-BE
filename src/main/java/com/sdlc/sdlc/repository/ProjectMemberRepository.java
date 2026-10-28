@@ -13,4 +13,5 @@ public interface ProjectMemberRepository extends MongoRepository<ProjectMember, 
     List<ProjectMember> findByOrganizationMemberAndProject_Organization(OrganizationMember organizationMember, Organization organization);
     List<ProjectMember> findByOrganizationMember(OrganizationMember organizationMember);
     Optional<ProjectMember> findByProjectAndOrganizationMember(Project project, OrganizationMember organizationMember);
+    ProjectMember findByUserId(String userId);
 }

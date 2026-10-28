@@ -13,4 +13,5 @@ public class CreateTestTicketRequest {
     private TestCaseStatus testCaseStatus;
     private TestExecutionStatus executionStatus;
     private Priority priority;
+    private String assignee;
 }
