@@ -124,6 +124,113 @@ public class TestTicketController {
         }
     }
 
+    @PostMapping("/{testTicketKey}/create-automated-bugs")
+    public ResponseEntity<?> createBugTicketAutomatically(
+            @PathVariable String testTicketKey) {
+
+        try {
+            Authentication authentication =
+                    SecurityContextHolder.getContext().getAuthentication();
+
+            String userName = authentication.getName();
+
+            TestTicket testTicket = testTicketRepository.findByKey(testTicketKey);
+
+            if (testTicket == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Test ticket not found"));
+            }
+
+            if (testTicket.getExecutionStatus() != TestExecutionStatus.FAIL) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ErrorResponse("Test ticket has not failed"));
+            }
+
+            List<TestTicketBugTicketLink> links =
+                    testTicketBugTicketLinkRepository.findByTestTicketKey(testTicketKey);
+
+            for (TestTicketBugTicketLink bugLink : links) {
+                BugTicket existingBug =
+                        bugTicketRepository.findByKey(bugLink.getBugTicketKey());
+
+                if (existingBug != null
+                        && existingBug.getTitle() != null
+                        && existingBug.getTitle().equalsIgnoreCase(
+                        "Auto-generated: " + testTicket.getTitle())) {
+
+                    return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body(new ErrorResponse(
+                                    "Automated BugTicket already exists for this TestTicket"));
+                }
+            }
+
+            TestTicketDevTicketLink devLink =
+                    testTicketDevTicketLinkRepository.findByTestCaseId(testTicketKey);
+
+            if (devLink == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse(
+                                "No DevTicket is linked to this TestTicket"));
+            }
+
+            DevTicket devTicket =
+                    devTicketRepository.findByKey(devLink.getDevTicketId());
+
+            if (devTicket == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ErrorResponse("Dev ticket not found"));
+            }
+
+            Project project = testTicket.getProject();
+
+            ProjectMember createdBy =
+                    featureService.validateFeatureEditAccess(
+                            project.getProjectId(),
+                            userName,
+                            Set.of(ProjectRoles.VIEWER, ProjectRoles.DEV)
+                    );
+
+            if (createdBy == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse(
+                                "You cannot create a bug ticket for this project"));
+            }
+
+            BugTicket bugTicket = new BugTicket();
+
+            bugTicket.setTitle("Auto-generated: " + testTicket.getTitle());
+            bugTicket.setDescription(
+                    "Automatically generated because the test case failed."
+            );
+
+            bugTicket.setTestCase(testTicket);
+            bugTicket.setProject(testTicket.getProject());
+            bugTicket.setFeature(testTicket.getFeature());
+
+            BugTicket savedBugTicket =
+                    bugTicketService.createManualBugTicketWithLink(
+                            bugTicket,
+                            testTicket,
+                            createdBy,
+                            devTicket.getFeature()
+                    );
+
+            BugTicketResponse response =
+                    bugTicketService.toResponse(savedBugTicket);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (ResponseStatusException e) {
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(new ErrorResponse(e.getReason()));
+
+        } catch (Exception e) {
+            log.error("Error creating automated BugTicket", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Error creating automated bug ticket"));
+        }
+    }
+
 
     @PatchMapping("/{ticketKey}/status")
     public ResponseEntity<?> updateTestTicketStatus(@PathVariable String ticketKey, @RequestBody Map<String, TestExecutionStatus> request){
