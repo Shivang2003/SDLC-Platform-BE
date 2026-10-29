@@ -108,15 +108,8 @@ public class DevTicketService {
             createRevision(
                     savedTicket,
                     createdBy,
-                    List.of(
-                            "title",
-                            "description",
-                            "assignee",
-                            "status",
-                            "priority",
-                            "feature",
-                            "project"
-                    )
+                    List.of(),
+                    Map.of()
             );
 
             return savedTicket;
@@ -167,7 +160,8 @@ public class DevTicketService {
     public DevTicketRevision createRevision(
             DevTicket devTicket,
             ProjectMember changedBy,
-            List<String> changedFields) {
+            List<String> changedFields,
+            Map<String,FieldChange> fieldChanges) {
 
         try {
             DevTicketRevision revision = new DevTicketRevision();
@@ -186,6 +180,7 @@ public class DevTicketService {
             revision.setTargetVersionId(devTicket.getTargetVersionId());
             revision.setChangedBy(changedBy);
             revision.setChangedFields(new ArrayList<>(changedFields));
+            revision.setChanges(fieldChanges);
             revision.setCreatedAt(LocalDateTime.now());
 
             return devTicketRevisionRepository.save(revision);
@@ -219,6 +214,9 @@ public class DevTicketService {
 
             LocalDateTime now = LocalDateTime.now();
 
+            Map<String,FieldChange> statusChanges = new HashMap<>();
+            statusChanges.put("status",new FieldChange(devTicket.getStatus(),newStatus));
+
             // Update ticket
             devTicket.setStatus(newStatus);
             devTicket.setUpdatedBy(changedBy);
@@ -248,7 +246,8 @@ public class DevTicketService {
             createRevision(
                     updatedTicket,
                     changedBy,
-                    List.of("status")
+                    List.of("status"),
+                    statusChanges
             );
 
             return updatedTicket;
@@ -322,11 +321,12 @@ public class DevTicketService {
         }
 
         List<String> changedFields = new ArrayList<>();
+        Map<String,FieldChange> fieldChanges = new HashMap<>();
 
         // Update title
         if (request.getTitle() != null
                 && !Objects.equals(devTicket.getTitle(), request.getTitle())) {
-
+            fieldChanges.put("title",new FieldChange(devTicket.getTitle(),request.getTitle()));
             devTicket.setTitle(request.getTitle());
             changedFields.add("title");
         }
@@ -336,7 +336,7 @@ public class DevTicketService {
                 && !Objects.equals(
                 devTicket.getDescription(),
                 request.getDescription())) {
-
+            fieldChanges.put("description",new FieldChange(devTicket.getDescription(),request.getDescription()));
             devTicket.setDescription(request.getDescription());
             changedFields.add("description");
         }
@@ -346,7 +346,7 @@ public class DevTicketService {
                 && !Objects.equals(
                 devTicket.getPriority(),
                 request.getPriority())) {
-
+            fieldChanges.put("priority",new FieldChange(devTicket.getPriority(),request.getPriority()));
             devTicket.setPriority(request.getPriority());
             changedFields.add("priority");
         }
@@ -390,6 +390,7 @@ public class DevTicketService {
             ObjectId newAssigneeId = assignee.getId();
 
             if (!Objects.equals(currentAssigneeId, newAssigneeId)) {
+                fieldChanges.put("assignee",new FieldChange(assignee,request.getAssigneeUserName()));
                 devTicket.setAssignee(assignee);
                 changedFields.add("assignee");
             }
@@ -417,7 +418,7 @@ public class DevTicketService {
         DevTicket updatedTicket = devTicketRepository.save(devTicket);
 
         // Create one snapshot containing all changed fields
-        createRevision(updatedTicket, updatedBy, changedFields);
+        createRevision(updatedTicket, updatedBy, changedFields, fieldChanges);
 
         return updatedTicket;
     }
@@ -545,6 +546,7 @@ public class DevTicketService {
                                 .getUser().getUserName());
             }
             response.setChangedFields(revision.getChangedFields());
+            response.setChanges(revision.getChanges());
             response.setStatus(revision.getStatus());
             response.setPriority(revision.getPriority());
 

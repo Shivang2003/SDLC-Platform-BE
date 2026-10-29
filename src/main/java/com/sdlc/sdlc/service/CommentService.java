@@ -172,7 +172,7 @@ public class CommentService {
             if (feature.getDevTicketId() != null) {
                 for (String ticketKey : feature.getDevTicketId()) {
 
-                    DevTicket ticket = devTicketRepository.findByKey(ticketKey);
+                    TicketTitleProjection ticket = devTicketRepository.findTitleByKey(ticketKey);
 
                     if (ticket != null) {
                         tickets.add(Map.of(

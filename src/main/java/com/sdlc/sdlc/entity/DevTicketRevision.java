@@ -11,7 +11,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Document(collection = "dev_ticket_revisions")
@@ -55,4 +57,5 @@ public class DevTicketRevision {
 
     private LocalDateTime createdAt;
     private List<String> changedFields = new ArrayList<>();
+    private Map<String, FieldChange> changes = new HashMap<>();
 }

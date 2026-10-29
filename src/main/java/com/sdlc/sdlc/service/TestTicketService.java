@@ -92,7 +92,8 @@ public class TestTicketService {
 
             TestTicket savedTicket = testTicketRepository.save(testTicket);
 
-            createRevision(savedTicket, createdBy);
+            createRevision(savedTicket, createdBy, List.of(),
+                    Map.of());
 
             return savedTicket;
         }
@@ -124,9 +125,6 @@ public class TestTicketService {
         testTicket.setFeature(feature);
         testTicket.setProject(feature.getProject());
 
-//        User assigneeUser= userRepository.findByUserName(request.getAssignee());
-//        ProjectMember assigneeMember= projectMemberRepository.findByUserId(assigneeUser.getUserId());
-//        testTicket.setAssignee(assigneeMember);
         if (request.getAssignee() != null && !request.getAssignee().isBlank()) {
 
             User assignedUser = userRepository.findByUserName(request.getAssignee());
@@ -158,7 +156,9 @@ public class TestTicketService {
 
     public TestTicketRevision createRevision(
             TestTicket testTicket,
-            ProjectMember changedBy) {
+            ProjectMember changedBy,
+            List<String> changedFields,
+            Map<String,FieldChange> fieldChanges) {
 
         TestTicketRevision revision = new TestTicketRevision();
 
@@ -179,6 +179,8 @@ public class TestTicketService {
         revision.setCreatedBy(testTicket.getCreatedBy());
         revision.setTargetVersionId(testTicket.getTargetVersionId());
         revision.setPriority(testTicket.getPriority());
+        revision.setChangedFields(new ArrayList<>(changedFields));
+        revision.setChanges(fieldChanges);
 
         revision.setChangedBy(changedBy);
         revision.setCreatedAt(LocalDateTime.now());
@@ -233,8 +235,10 @@ public class TestTicketService {
             TestTicket updatedTicket = testTicketRepository.save(testTicket);
 
             // Create status history
-            TestTicketStatusHistory history =
-                    new TestTicketStatusHistory();
+            TestTicketStatusHistory history = new TestTicketStatusHistory();
+
+            Map<String,FieldChange> statusChanges = new HashMap<>();
+            statusChanges.put("status",new FieldChange(previousStatus,newStatus));
 
             history.setTestTicket(updatedTicket);
             history.setPreviousStatus(previousStatus);
@@ -245,7 +249,7 @@ public class TestTicketService {
             testTicketStatusHistoryRepository.save(history);
 
             // Create revision snapshot
-            createRevision(updatedTicket, changedBy);
+            createRevision(updatedTicket, changedBy,List.of("status"), statusChanges);
 
             return updatedTicket;
 
@@ -328,6 +332,8 @@ public class TestTicketService {
                 ).orElseThrow(() -> new RuntimeException("Project member not found"));
 
         boolean ticketChanged = false;
+        List<String> changedFields = new ArrayList<>();
+        Map<String,FieldChange> fieldChanges = new HashMap<>();
 
         // Update title
         if (request.getTitle() != null && !request.getTitle().equals(testTicket.getTitle())) {
@@ -335,13 +341,16 @@ public class TestTicketService {
             if (existingTicket != null && !existingTicket.getKey().equals(testTicket.getKey())) {
                 throw new RuntimeException("TestTicket with this title already exists in this feature");
             }
+            fieldChanges.put("title",new FieldChange(testTicket.getTitle(),request.getTitle()));
+            changedFields.add("title");
             testTicket.setTitle(request.getTitle());
             ticketChanged = true;
         }
 
         // Update description
         if (request.getDescription() != null && !Objects.equals(request.getDescription(), testTicket.getDescription())) {
-
+            fieldChanges.put("description",new FieldChange(testTicket.getDescription(),request.getDescription()));
+            changedFields.add("description");
             testTicket.setDescription(request.getDescription());
             ticketChanged = true;
         }
@@ -349,7 +358,8 @@ public class TestTicketService {
         // Update priority
         if (request.getPriority() != null
                 && request.getPriority() != testTicket.getPriority()) {
-
+            fieldChanges.put("priority",new FieldChange(testTicket.getPriority(),request.getPriority()));
+            changedFields.add("priority");
             testTicket.setPriority(request.getPriority());
             ticketChanged = true;
         }
@@ -357,7 +367,8 @@ public class TestTicketService {
         // Update test case status
         if (request.getTestCaseStatus() != null
                 && request.getTestCaseStatus() != testTicket.getTestCaseStatus()) {
-
+            fieldChanges.put("testCaseStatus",new FieldChange(testTicket.getTestCaseStatus(),request.getTestCaseStatus()));
+            changedFields.add("testCaseStatus");
             testTicket.setTestCaseStatus(request.getTestCaseStatus());
             ticketChanged = true;
         }
@@ -365,10 +376,17 @@ public class TestTicketService {
         // Update execution status
         if (request.getExecutionStatus() != null
                 && request.getExecutionStatus() != testTicket.getExecutionStatus()) {
-
+            fieldChanges.put("executionStatus",new FieldChange(testTicket.getExecutionStatus(),request.getExecutionStatus()));
+            changedFields.add("executionStatus");
             testTicket.setExecutionStatus(request.getExecutionStatus());
             ticketChanged = true;
         }
+
+        //getTestTicket userName
+        ProjectMember assigneeMember = projectMemberRepository.findById(testTicket.getAssignee().getId()).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND,
+                "Assignee project member not found"));
+        String previousAssignee = userRepository.findByUserId(assigneeMember.getUserId()).getUserName();
 
         if (request.getAssigneeUserName() != null) {
             User assigneeUser = userRepository.findByUserName(request.getAssigneeUserName());
@@ -382,7 +400,10 @@ public class TestTicketService {
             ProjectMember assignee = projectMemberRepository.findByProjectAndOrganizationMember(
                     testTicket.getProject(),
                     assigneeOrganizationMember).orElseThrow(() -> new RuntimeException("Assignee is not a member of this project"));
+            fieldChanges.put("assignee",new FieldChange(previousAssignee,request.getAssigneeUserName()));
+            changedFields.add("assignee");
             testTicket.setAssignee(assignee);
+            ticketChanged = true;
         }
 
         if (ticketChanged) {
@@ -398,7 +419,7 @@ public class TestTicketService {
 
             TestTicket updatedTicket = testTicketRepository.save(testTicket);
 
-            createRevision(updatedTicket, changedBy);
+            createRevision(updatedTicket, changedBy, changedFields, fieldChanges);
 
             return updatedTicket;
         }
@@ -431,6 +452,8 @@ public class TestTicketService {
             response.setExecutionStatus(revision.getExecutionStatus());
             response.setPriority(revision.getPriority());
             response.setCreatedAt(revision.getCreatedAt());
+            response.setChangedFields(revision.getChangedFields());
+            response.setChanges(revision.getChanges());
 
             if (revision.getProject() != null) {
                 response.setProjectId(

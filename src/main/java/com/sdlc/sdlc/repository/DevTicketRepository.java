@@ -17,7 +17,7 @@ public interface DevTicketRepository extends MongoRepository<DevTicket, ObjectId
     List<DevTicket> findByProjectIdAndFeatureId(ObjectId projectId, ObjectId featureId);
     List<DevTicket> findByProjectAndFeature(Project project, Feature feature);
     List<DevTicket> findByProjectIn(List<Project> projects);
-    @Query(value = "{ 'key': ?0 }", fields = "{ 'title': 1, '_id': 0 }")
+    @Query(value = "{ 'key': ?0 }", fields = "{ 'key': 1, 'title': 1, '_id': 0 }")
     TicketTitleProjection findTitleByKey(String ticketKey);
     @Query(value = "{ 'project.$id': ?0 }",
             fields = "{ 'key': 1, 'title': 1, '_id': 0 }")
