@@ -1,12 +1,11 @@
 package com.sdlc.sdlc.controller;
 
 import com.sdlc.sdlc.dto.BugTicketDetailsResponse;
-import com.sdlc.sdlc.entity.BugTicket;
-import com.sdlc.sdlc.entity.ErrorResponse;
-import com.sdlc.sdlc.entity.Feature;
+import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.repository.BugTicketRepository;
 import com.sdlc.sdlc.repository.FeatureRepositroy;
 import com.sdlc.sdlc.repository.ProjectRepository;
+import com.sdlc.sdlc.repository.UserRepository;
 import com.sdlc.sdlc.service.FeatureService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 @Controller
@@ -39,12 +39,20 @@ public class BugController {
     @Autowired
     FeatureRepositroy featureRepositroy;
 
+    @Autowired
+    UserRepository userRepository;
+
     @GetMapping("/{ticketKey}/details")
     public ResponseEntity<?> getBugTicketDetails(@PathVariable String ticketKey) {
 
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
+
+            User userInDb = userRepository.findByUserName(userName);
+            if (userInDb == null) {
+                return new ResponseEntity<>(new ErrorResponse("User not found"), HttpStatus.NOT_FOUND);
+            }
 
             BugTicket bugTicket = bugTicketRepository.findByKey(ticketKey);
 
@@ -55,14 +63,21 @@ public class BugController {
                 );
             }
 
-            featureService.validateFeatureEditAccess(
-                    bugTicket.getProject().getProjectId(),
-                    userName,
-                    Set.of()
-            );
+            featureService.validateFeatureEditAccess(bugTicket.getProject().getProjectId(), userName, Set.of());
 
-            String projectName = projectRepository.findByProjectId(bugTicket.getProject().getProjectId()).getName().toString();
-            String featureName = featureRepositroy.findByFeatureId(bugTicket.getFeature().getFeatureId()).getName().toString();
+            Project projectInDb = projectRepository.findByProjectId(bugTicket.getProject().getProjectId());
+            if (projectInDb == null) {
+                throw new NoSuchElementException("Referenced project not found");
+            }
+
+            if(!projectInDb.getUserId().contains(userInDb.getUserId())){
+                throw new AccessDeniedException("User does not have access to this project");
+            }
+
+            Feature featureInDb = featureRepositroy.findByFeatureId(bugTicket.getFeature().getFeatureId());
+            if (featureInDb == null) {
+                throw new NoSuchElementException("Referenced feature not found" );
+            }
 
             BugTicketDetailsResponse response =
                     new BugTicketDetailsResponse(
@@ -77,8 +92,8 @@ public class BugController {
                             bugTicket.getSeverity(),
                             bugTicket.getCurrentRevision(),
                             bugTicket.getTargetVersionId(),
-                            projectName,
-                            featureName,
+                            projectInDb.getName(),
+                            featureInDb.getName(),
                             bugTicket.getTestCase() != null
                                     ? bugTicket.getTestCase().getKey()
                                     : null
@@ -87,12 +102,17 @@ public class BugController {
             return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (AccessDeniedException e) {
+
             return new ResponseEntity<>(
                     new ErrorResponse(e.getMessage()),
                     HttpStatus.FORBIDDEN
             );
 
-        } catch (Exception e) {
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.NOT_FOUND);
+        } catch (IllegalStateException e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
+        }catch (Exception e) {
             log.error("Error fetching BugTicket details", e);
 
             return new ResponseEntity<>(

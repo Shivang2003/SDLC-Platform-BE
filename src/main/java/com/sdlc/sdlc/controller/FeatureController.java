@@ -13,12 +13,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 @Controller
@@ -86,8 +88,7 @@ public class FeatureController {
 
             String userName = authentication.getName();
 
-            Feature feature =
-                    featureService.checkIfFeatureIdExists(featureId);
+            Feature feature = featureService.checkIfFeatureIdExists(featureId);
 
             if (feature == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -122,38 +123,60 @@ public class FeatureController {
                     devTicketService.checkIfDevTicketKeyExists(devTicketId);
 
             if (devTicket == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(new ErrorResponse("Dev ticket doesn't exist"));
+                throw new NoSuchElementException("Dev ticket doesn't exist");
             }
 
             if (!devTicket.getFeature().getFeatureId().equals(featureId)) {
-                return ResponseEntity.badRequest()
-                        .body(new ErrorResponse(
-                                "Dev ticket does not belong to this feature"));
+                throw new IllegalArgumentException("Dev ticket does not belong to this feature");
             }
 
-            TestTicket testTicket =
-                    testTicketService.mapToTestTicket(request, feature);
+            TestTicket testTicket = testTicketService.mapToTestTicket(request, feature);
 
-            TestTicket createdTestTicket =
-                    testTicketService.createTestTicket(
-                            testTicket, feature, createdBy);
+            TestTicket createdTestTicket = testTicketService.createTestTicket(testTicket, feature, createdBy);
 
-            testTicketService.createTestTicketDevTicketLink(
-                    createdTestTicket, devTicket);
+            testTicketService.createTestTicketDevTicketLink(createdTestTicket, devTicket);
 
-            return new ResponseEntity<>(createdTestTicket, HttpStatus.CREATED);
+            return new ResponseEntity<>(HttpStatus.CREATED);
+
+        } catch (AccessDeniedException e) {
+
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.FORBIDDEN
+            );
+
+        } catch (NoSuchElementException e) {
+
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.NOT_FOUND
+            );
+
+        } catch (IllegalArgumentException e) {
+
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.BAD_REQUEST
+            );
+
+        } catch (IllegalStateException e) {
+
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.CONFLICT
+            );
 
         } catch (ResponseStatusException e) {
+
             return ResponseEntity.status(e.getStatusCode())
                     .body(new ErrorResponse(e.getReason()));
 
         } catch (Exception e) {
+
             log.error("Error creating TestTicket", e);
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ErrorResponse("Error creating test ticket"));
         }
     }
-
 }
