@@ -2,6 +2,7 @@ package com.sdlc.sdlc.service;
 
 
 import com.sdlc.sdlc.dto.CreateOrganizationRequest;
+import com.sdlc.sdlc.dto.OrganizationMemberResponse;
 import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.enums.OrganizationRoles;
 import com.sdlc.sdlc.repository.OrganizationMemberRepository;
@@ -63,6 +64,11 @@ public class OrganizationService {
         if (existingMember != null) {
             throw new IllegalStateException("User is already a member of this organization");
         }
+
+        //save userId to organization
+        organization.getUserId().add(user.getUserId());
+        organizationRepository.save(organization);
+
         OrganizationMember organizationMember = new OrganizationMember();
         organizationMember.setOrganization(organization);
         organizationMember.setUser(user);
@@ -98,6 +104,17 @@ public class OrganizationService {
             return null;
         }
         return organizationMemberRepository.findByUserAndOrganization(user, organization);
+    }
+
+    public OrganizationMemberResponse mapToOrganizationMemberResponse(
+            OrganizationMember organizationMember) {
+
+        OrganizationMemberResponse response = new OrganizationMemberResponse();
+
+        response.setUserId(organizationMember.getUserId());
+        response.setRole(organizationMember.getRole());
+
+        return response;
     }
 
 }

@@ -1,5 +1,6 @@
 package com.sdlc.sdlc.entity;
 
+import com.sdlc.sdlc.enums.ProjectRoles;
 import lombok.Data;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
@@ -21,7 +22,7 @@ public class ProjectMember {
     @DBRef
     private Project project;
 
-    private String role;
+    private ProjectRoles role;
 
     private String userId;
 }

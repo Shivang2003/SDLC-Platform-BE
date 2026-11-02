@@ -264,6 +264,9 @@ public class TestTicketController {
 
             return new ResponseEntity<>(updatedTicket,HttpStatus.OK);
         }
+        catch (AccessDeniedException e){
+            return new ResponseEntity<>(new ErrorResponse("You cannot update a test ticket for this feature"),HttpStatus.FORBIDDEN);
+        }
         catch (Exception e) {
         log.error("Error updating dev ticket status", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Unable to update dev ticket status"));
