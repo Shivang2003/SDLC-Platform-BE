@@ -50,7 +50,7 @@ public class FeatureService {
                 .findFirst()
                 .orElseThrow(() -> new AccessDeniedException("You are not a member of this project"));
 
-        ProjectRoles userRole = ProjectRoles.valueOf(member.getRole());
+        ProjectRoles userRole = member.getRole();
         if (restrictedRoles.contains(userRole)) {
             throw new AccessDeniedException(
                     "Your role " + userRole + " does not have permission to perform this action");

@@ -5,5 +5,6 @@ public enum ProjectRoles {
     DEV,
     TESTER,
     ADMIN,
-    OWNER
+    OWNER,
+    WORKER
 }

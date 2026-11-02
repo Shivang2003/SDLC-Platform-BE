@@ -62,6 +62,9 @@ public class ProjectController {
     @Autowired
     BugTicketRepository bugTicketRepository;
 
+    @Autowired
+    UserRepository userRepository;
+
     @PostMapping("/{projectId}/create-feature")
     public ResponseEntity<?> createFeature(@PathVariable String projectId, @RequestBody Feature feature) {
         try {
@@ -148,7 +151,7 @@ public class ProjectController {
             }
             ProjectMember currentProjectMember = projectMemberRepository.findByProjectAndOrganizationMember(project, currentOrgMember).orElse(null);
 
-            if (currentProjectMember == null || !"ADMIN".equals(currentProjectMember.getRole())) {
+            if (currentProjectMember == null || (currentProjectMember.getRole() != ProjectRoles.ADMIN && currentProjectMember.getRole() != ProjectRoles.OWNER)) {
                 return new ResponseEntity<>(new ErrorResponse("Only project admins can add members"), HttpStatus.FORBIDDEN);
             }
             User newUser = userService.findByUserName(userDetails.getUserName());
@@ -161,11 +164,11 @@ public class ProjectController {
             if (newOrgMember == null) {
                 return new ResponseEntity<>(new ErrorResponse("User is not a member of this organization"), HttpStatus.BAD_REQUEST);
             }
-            String role = userDetails.getRole();
+            ProjectRoles role = userDetails.getRole();
 
-            if (!List.of("ADMIN", "VIEWER", "WORKER", "OWNER").contains(role)) {
-                return new ResponseEntity<>(new ErrorResponse("Invalid project role"), HttpStatus.BAD_REQUEST);
-            }
+//            if (!List.of("ADMIN", "VIEWER", "WORKER", "OWNER").contains(role)) {
+//                return new ResponseEntity<>(new ErrorResponse("Invalid project role"), HttpStatus.BAD_REQUEST);
+//            }
 
             ProjectMember projectMember = projectService.addMemberToProject(newOrgMember, project, role);
             return new ResponseEntity<>(projectMember, HttpStatus.CREATED);
@@ -265,6 +268,100 @@ public class ProjectController {
             return new ResponseEntity<>(userNames, HttpStatus.OK);
         } catch (Exception e){
             return new ResponseEntity<>(new ErrorResponse("Unable to add project member"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping("/{projectId}/change-roles")
+    public ResponseEntity<?> changeProjectMemberRole(@PathVariable String projectId, @RequestBody ChangeProjectMemberRoleRequest request) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserName = authentication.getName();
+
+            Project project = projectRepository.findByProjectId(projectId);
+            if (project == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Project not found");
+            }
+
+            User currentUser = userService.findByUserName(currentUserName);
+            OrganizationMember currentOrgMember = organizationMemberRepository.findByUserAndOrganization(currentUser, project.getOrganization());
+
+            if (currentOrgMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("You are not a member of this organization"), HttpStatus.FORBIDDEN);
+            }
+            ProjectMember currentProjectMember = projectMemberRepository.findByProjectAndOrganizationMember(project, currentOrgMember).orElse(null);
+
+            if (currentProjectMember == null || (currentProjectMember.getRole() != ProjectRoles.ADMIN && currentProjectMember.getRole() != ProjectRoles.OWNER)) {
+                return new ResponseEntity<>(new ErrorResponse("Only project admins can change roles"), HttpStatus.FORBIDDEN);
+            }
+
+            User targetUser = userRepository.findByUserName(request.getUserName());
+            if (targetUser == null) {
+                return new ResponseEntity<>(new ErrorResponse("Target user doesn't exist"), HttpStatus.NOT_FOUND);
+            }
+
+            OrganizationMember targetOrgMember = organizationMemberRepository.findByUserAndOrganization(targetUser, project.getOrganization());
+            if (targetOrgMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("Target user is not a member of this organization"), HttpStatus.BAD_REQUEST);
+            }
+
+            ProjectMember targetProjectMember = projectMemberRepository.findByProjectAndOrganizationMember(project, targetOrgMember).orElse(null);
+            if (targetProjectMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("Target user is not a member of this project"), HttpStatus.BAD_REQUEST);
+            }
+            if(targetProjectMember.getRole() == ProjectRoles.OWNER && currentProjectMember.getRole() != ProjectRoles.OWNER) {
+                return new ResponseEntity<>(new ErrorResponse("Only project owners can change the role of another project owner"), HttpStatus.FORBIDDEN);
+            }
+
+            if(targetProjectMember.getRole().equals(request.getNewRole())) {
+                return new ResponseEntity<>(new ErrorResponse("Target user already has the specified role"), HttpStatus.BAD_REQUEST);
+            }
+            targetProjectMember.setRole(request.getNewRole());
+            projectMemberRepository.save(targetProjectMember);
+
+            return new ResponseEntity<>(HttpStatus.OK);
+
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse("Unable to change project member role"), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{projectId}/project-member-details")
+    public ResponseEntity<?> getProjectMemberDetails(
+            @PathVariable String projectId) {
+
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+            User user = userService.findByUserName(userName);
+
+            if (user == null) {
+                return new ResponseEntity<>(new ErrorResponse("User doesn't exist"), HttpStatus.NOT_FOUND);
+            }
+
+            Project project = projectRepository.findByProjectId(projectId);
+
+            if (project == null) {
+                return new ResponseEntity<>(new ErrorResponse("Project doesn't exist"), HttpStatus.NOT_FOUND);
+            }
+
+            OrganizationMember organizationMember = organizationMemberRepository.findByUserAndOrganization(user, project.getOrganization());
+
+            if (organizationMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
+            }
+
+            ProjectMember projectMember = projectMemberRepository.findByProjectAndOrganizationMember(project, organizationMember).orElse(null);
+
+            if (projectMember == null) {
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of this project"), HttpStatus.FORBIDDEN);
+            }
+
+            ProjectMemberResponse response = projectService.mapToProjectMemberResponse(projectMember);
+
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse("Unable to fetch project member details"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

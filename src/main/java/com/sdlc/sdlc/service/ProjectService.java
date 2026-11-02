@@ -1,10 +1,12 @@
 package com.sdlc.sdlc.service;
 
 
+import com.sdlc.sdlc.dto.ProjectMemberResponse;
 import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.entity.OrganizationMember;
 import com.sdlc.sdlc.entity.Project;
 import com.sdlc.sdlc.entity.ProjectMember;
+import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.repository.OrganizationRepository;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.repository.ProjectRepository;
@@ -67,7 +69,7 @@ public class ProjectService {
             }
             project.getUserId().add(organizationMember.getUserId());
             Project savedProject = projectRepository.save(project);
-            addMemberToProject(organizationMember, savedProject, "ADMIN");
+            addMemberToProject(organizationMember, savedProject, ProjectRoles.ADMIN);
             return savedProject;
         } catch (Exception e) {
             log.error("Error creating new project: {}", e.getMessage(), e);
@@ -76,7 +78,7 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectMember addMemberToProject(OrganizationMember organizationMember, Project project, String role) {
+    public ProjectMember addMemberToProject(OrganizationMember organizationMember, Project project, ProjectRoles role) {
             if (!organizationMember.getOrganization().getId().equals(project.getOrganization().getId())) {
 
                 throw new IllegalStateException("Organization member does not belong to the project organization"
@@ -85,6 +87,16 @@ public class ProjectService {
 
             ProjectMember existingMember = projectMemberRepository.findByOrganizationMemberAndProject(organizationMember, project);
             if (existingMember != null) {throw new IllegalStateException("User is already a member of this project");}
+
+            // Add userId to Project
+            if (project.getUserId() == null) {
+                project.setUserId(new ArrayList<>());
+            }
+
+            if (!project.getUserId().contains(organizationMember.getUserId())) {
+                project.getUserId().add(organizationMember.getUserId());
+                projectRepository.save(project);
+            }
 
             ProjectMember projectMember = new ProjectMember();
 
@@ -95,6 +107,17 @@ public class ProjectService {
 
             return projectMemberRepository.save(projectMember);
 
+    }
+
+    public ProjectMemberResponse mapToProjectMemberResponse(
+            ProjectMember projectMember) {
+
+        ProjectMemberResponse response = new ProjectMemberResponse();
+
+        response.setUserId(projectMember.getUserId());
+        response.setRole(projectMember.getRole());
+
+        return response;
     }
 
 
