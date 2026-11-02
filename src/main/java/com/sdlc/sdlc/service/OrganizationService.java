@@ -2,6 +2,7 @@ package com.sdlc.sdlc.service;
 
 
 import com.sdlc.sdlc.dto.CreateOrganizationRequest;
+import com.sdlc.sdlc.dto.OrganizationMemberResponse;
 import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.enums.OrganizationRoles;
 import com.sdlc.sdlc.repository.OrganizationMemberRepository;
@@ -98,6 +99,17 @@ public class OrganizationService {
             return null;
         }
         return organizationMemberRepository.findByUserAndOrganization(user, organization);
+    }
+
+    public OrganizationMemberResponse mapToOrganizationMemberResponse(
+            OrganizationMember organizationMember) {
+
+        OrganizationMemberResponse response = new OrganizationMemberResponse();
+
+        response.setUserId(organizationMember.getUserId());
+        response.setRole(organizationMember.getRole());
+
+        return response;
     }
 
 }

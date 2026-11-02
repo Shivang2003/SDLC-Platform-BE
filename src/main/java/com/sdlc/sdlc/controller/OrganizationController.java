@@ -2,8 +2,10 @@ package com.sdlc.sdlc.controller;
 
 
 import com.sdlc.sdlc.dto.AddOrganizationMemberRequest;
+import com.sdlc.sdlc.dto.OrganizationMemberResponse;
 import com.sdlc.sdlc.entity.*;
 import com.sdlc.sdlc.enums.OrganizationRoles;
+import com.sdlc.sdlc.repository.OrganizationMemberRepository;
 import com.sdlc.sdlc.repository.ProjectMemberRepository;
 import com.sdlc.sdlc.service.OrganizationService;
 import com.sdlc.sdlc.service.ProjectService;
@@ -37,6 +39,9 @@ public class OrganizationController {
 
     @Autowired
     ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    OrganizationMemberRepository organizationMemberRepository;
 
     @PostMapping("/{organizationId}/add-member")
     public ResponseEntity<?> addUserToOrganization(@PathVariable String organizationId,@RequestBody AddOrganizationMemberRequest organizationMemberRequest) {
@@ -173,6 +178,35 @@ public class OrganizationController {
             return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
             }
 
+    }
+
+    @GetMapping("/{organizationId}/organization-member-details")
+    public ResponseEntity<?> createProjectInOrganization(@PathVariable String organizationId){
+        try{
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+
+            User user = userService.findByUserName(userName);
+            if(user == null){
+                return new ResponseEntity<>(new ErrorResponse("User doesn't exist"), HttpStatus.NOT_FOUND);
+            }
+
+            Organization organization = organizationService.checkOrganizationIdExists(organizationId);
+            if(organization == null){
+                return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
+            }
+
+            OrganizationMember organizationMember = organizationMemberRepository.findByUserAndOrganization(user, organization);
+            if(organizationMember == null){
+                return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.NOT_FOUND);
+            }
+
+            OrganizationMemberResponse response = organizationService.mapToOrganizationMemberResponse(organizationMember);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+
+        }catch (Exception e) {
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
+        }
     }
 
 }
