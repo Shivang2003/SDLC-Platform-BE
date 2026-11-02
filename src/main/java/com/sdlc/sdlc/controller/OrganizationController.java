@@ -107,7 +107,7 @@ public class OrganizationController {
             List<Project> projects = projectMembers.stream().map(ProjectMember::getProject).toList();
 
             if (projects.isEmpty()) {
-                return new ResponseEntity<>(new ErrorResponse("No project found"), HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>(new ErrorResponse("You don't have access to any project"), HttpStatus.NOT_FOUND);
             }
 
             return new ResponseEntity<>(projects, HttpStatus.OK);

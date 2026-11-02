@@ -64,6 +64,11 @@ public class OrganizationService {
         if (existingMember != null) {
             throw new IllegalStateException("User is already a member of this organization");
         }
+
+        //save userId to organization
+        organization.getUserId().add(user.getUserId());
+        organizationRepository.save(organization);
+
         OrganizationMember organizationMember = new OrganizationMember();
         organizationMember.setOrganization(organization);
         organizationMember.setUser(user);
