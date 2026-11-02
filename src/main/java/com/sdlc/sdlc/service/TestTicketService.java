@@ -188,6 +188,7 @@ public class TestTicketService {
         return testTicketRevisionRepository.save(revision);
     }
 
+    @Transactional
     public TestTicketDevTicketLink createTestTicketDevTicketLink(
             TestTicket testTicket,
             DevTicket devTicket) {

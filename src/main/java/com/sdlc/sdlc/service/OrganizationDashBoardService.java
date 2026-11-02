@@ -38,10 +38,12 @@ public class OrganizationDashBoardService {
     @Autowired
     private BugTicketRepository bugTicketRepository;
 
-    public OrganizationDashboardSummary getSummary(String organizationId) {
+    public OrganizationDashboardSummary getSummary(String organizationId, String userId) {
 
-        Organization organization =
-                organizationRepository.findByOrganizationId(organizationId);
+        Organization organization = organizationRepository.findByOrganizationId(organizationId);
+        if(!organization.getUserId().contains(userId)){
+            throw new RuntimeException("User not authorized to access this organization");
+        }
 
         if (organization == null) {
             throw new RuntimeException("Organization not found");
@@ -127,10 +129,12 @@ public class OrganizationDashBoardService {
         return summary;
     }
 
-    public Map<String, Long> getDevTicketStats(String organizationId) {
+    public Map<String, Long> getDevTicketStats(String organizationId, String userId) {
 
-        Organization organization =
-                organizationRepository.findByOrganizationId(organizationId);
+        Organization organization = organizationRepository.findByOrganizationId(organizationId);
+        if(!organization.getUserId().contains(userId)){
+            throw new RuntimeException("User not authorized to access this organization");
+        }
 
         if (organization == null) {
             throw new RuntimeException("Organization not found");
@@ -156,10 +160,13 @@ public class OrganizationDashBoardService {
         return stats;
     }
 
-    public Map<String, Long> getBugStats(String organizationId) {
+    public Map<String, Long> getBugStats(String organizationId, String userId) {
 
-        Organization organization =
-                organizationRepository.findByOrganizationId(organizationId);
+        Organization organization = organizationRepository.findByOrganizationId(organizationId);
+        if(!organization.getUserId().contains(userId)){
+            throw new RuntimeException("User not authorized to access this organization");
+        }
+
 
         if (organization == null) {
             throw new RuntimeException("Organization not found");

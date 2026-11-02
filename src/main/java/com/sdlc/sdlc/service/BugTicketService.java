@@ -11,6 +11,8 @@ import com.sdlc.sdlc.repository.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -83,9 +85,9 @@ public class BugTicketService {
                 featureContatiningBugTicket.setBugTicketId(new ArrayList<>());
             }
             featureContatiningBugTicket.getBugTicketId().add(bugTicketkey);
+            BugTicket savedBugTicket = bugTicketRepository.save(bugTicket);
             featureRepositroy.save(featureContatiningBugTicket);
-
-            return bugTicketRepository.save(bugTicket);
+            return savedBugTicket;
 
         } catch (IllegalArgumentException e) {
             throw e;
@@ -111,8 +113,7 @@ public class BugTicketService {
             ProjectMember createdBy,
             Feature feature) {
 
-        BugTicket savedBugTicket =
-                createManualBugTicket(bugTicket, testTicket, createdBy, feature);
+        BugTicket savedBugTicket = createManualBugTicket(bugTicket, testTicket, createdBy, feature);
 
         createTestTicketBugTicketLink(testTicket, savedBugTicket);
 
@@ -205,12 +206,7 @@ public class BugTicketService {
 
         } catch (Exception e) {
             log.error("Error creating BugTicket {}", bugTicket.getKey(), e);
-
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to create BugTicket",
-                    e
-            );
+            throw new RuntimeException("Unable to create BugTicket", e);
         }
     }
 

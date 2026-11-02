@@ -7,6 +7,7 @@ import com.sdlc.sdlc.enums.ProjectRoles;
 import com.sdlc.sdlc.enums.TicketType;
 import com.sdlc.sdlc.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,6 +15,9 @@ import java.util.*;
 
 @Service
 public class CommentService {
+
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
 
     @Autowired
     TicketCommentsRepository ticketCommentsRepository;
@@ -141,7 +145,7 @@ public class CommentService {
                 .orElseThrow(() ->
                         new RuntimeException("Mention configuration not found"));
 
-        String frontendUrl = "http://localhost:5173";
+//        String frontendUrl = "http://localhost:5173";
         String organizationId = project.getOrganization().getOrganizationId();
 
         // USER mentions

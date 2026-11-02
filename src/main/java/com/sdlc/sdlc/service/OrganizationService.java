@@ -1,6 +1,7 @@
 package com.sdlc.sdlc.service;
 
 
+import com.sdlc.sdlc.dto.CreateOrganizationRequest;
 import com.sdlc.sdlc.entity.Organization;
 import com.sdlc.sdlc.enums.OrganizationRoles;
 import com.sdlc.sdlc.repository.OrganizationMemberRepository;
@@ -30,6 +31,19 @@ public class OrganizationService {
 
     @Autowired
     IdGeneratorService idGeneratorService;
+
+    public Organization mapToOrganization(CreateOrganizationRequest request) {
+
+        Organization organization = new Organization();
+
+        organization.setName(request.getName());
+        organization.setDescription(request.getDescription());
+
+        organization.setProjectId(new ArrayList<>());
+        organization.setUserId(new ArrayList<>());
+
+        return organization;
+    }
 
     public Organization createNewOrganization(Organization organization, User user) {
         organization.setOrganizationId(idGeneratorService.generateSequenceId("organization", "ORG"));

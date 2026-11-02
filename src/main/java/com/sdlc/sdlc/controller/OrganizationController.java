@@ -12,12 +12,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Controller
 @RequestMapping("/organization")
@@ -72,31 +74,71 @@ public class OrganizationController {
     }
 
     @GetMapping("/{organizationId}/projects")
-    public ResponseEntity<?> getProjectsOfOrganization(@PathVariable String organizationId) {
+    public ResponseEntity<?> getProjectsOfOrganization(
+            @PathVariable String organizationId) {
+
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String userName = authentication.getName();
 
             Organization organization = organizationService.checkOrganizationIdExists(organizationId);
+
             if (organization == null) {
                 return new ResponseEntity<>(new ErrorResponse("Organization doesn't exist"), HttpStatus.NOT_FOUND);
             }
 
             OrganizationMember organizationMember = organizationService.findOrganizationMemberByUserName(userName, organization);
+
             if (organizationMember == null) {
                 return new ResponseEntity<>(new ErrorResponse("User is not a member of the organization"), HttpStatus.FORBIDDEN);
             }
+
             List<ProjectMember> projectMembers = projectMemberRepository.findByOrganizationMember(organizationMember);
-//            List<ProjectMember> projectMembers = projectMemberRepository.findByOrganizationMemberAndProject_Organization(organizationMember, organization);
+//             List<ProjectMember> projectMembers =
+//                     projectMemberRepository.findByOrganizationMemberAndProject_Organization(
+//                             organizationMember, organization
+//                     );
+
             List<Project> projects = projectMembers.stream().map(ProjectMember::getProject).toList();
 
-            if(projects.isEmpty()){
+            if (projects.isEmpty()) {
                 return new ResponseEntity<>(new ErrorResponse("No project found"), HttpStatus.NOT_FOUND);
             }
+
             return new ResponseEntity<>(projects, HttpStatus.OK);
 
+        } catch (AccessDeniedException e) {
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.FORBIDDEN
+            );
+
+        } catch (NoSuchElementException e) {
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.NOT_FOUND
+            );
+
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.BAD_REQUEST
+            );
+
+        } catch (IllegalStateException e) {
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.CONFLICT
+            );
+
         } catch (Exception e) {
-            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
+            log.error("Error fetching projects for organization {}: {}",
+                    organizationId, e.getMessage(), e);
+
+            return new ResponseEntity<>(
+                    new ErrorResponse("Something went wrong while fetching projects"),
+                    HttpStatus.INTERNAL_SERVER_ERROR
+            );
         }
     }
     @PostMapping("/{organizationId}/create-project")

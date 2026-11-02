@@ -11,6 +11,7 @@ import com.sdlc.sdlc.repository.ProjectRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 
@@ -49,6 +50,7 @@ public class ProjectService {
         }
     }
 
+    @Transactional
     public Project createNewProject(Organization organization, Project project, OrganizationMember organizationMember) {
         try {
             String projectId = idGeneratorService.generateSequenceId("project", "PRJ");
@@ -72,6 +74,8 @@ public class ProjectService {
             return null;
         }
     }
+
+    @Transactional
     public ProjectMember addMemberToProject(OrganizationMember organizationMember, Project project, String role) {
             if (!organizationMember.getOrganization().getId().equals(project.getOrganization().getId())) {
 

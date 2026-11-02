@@ -23,16 +23,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
-import java.util.LinkedHashMap;
+
+import java.util.*;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -62,40 +60,55 @@ public class DevTicketController {
     public ResponseEntity<?> updateDevTicketStatus(@PathVariable String ticketKey, @RequestBody Map<String, TicketStatus> request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
             String userName = authentication.getName();
 
             DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
+
             if (devTicket == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse("Dev ticket not found"));
+                throw new NoSuchElementException("Dev ticket not found");
+            }
+
+            if (devTicket.getProject() == null || devTicket.getProject().getProjectId() == null) {
+                throw new NoSuchElementException("Project reference missing in DevTicket");
             }
 
             Project devTicketProject = devTicket.getProject();
 
-            ProjectMember projectMember = featureService.validateFeatureEditAccess(devTicketProject.getProjectId(), userName, Set.of(ProjectRoles.VIEWER,ProjectRoles.TESTER));
-
-            if (projectMember == null) {
-                return ResponseEntity.status(403).body("You cannot update a dev ticket for this feature");
-            }
+            ProjectMember projectMember = featureService.validateFeatureEditAccess(devTicketProject.getProjectId(),
+                            userName,
+                            Set.of(ProjectRoles.VIEWER, ProjectRoles.TESTER));
 
             TicketStatus status = request.get("status");
 
             if (status == null) {
-                return ResponseEntity.badRequest()
-                        .body(new ErrorResponse("Status is required"));
+                throw new IllegalArgumentException("Status is required");
             }
 
-            DevTicket updatedTicket =
-                    devTicketService.updateDevTicketStatus(
-                            devTicket,
-                            status,
-                            projectMember
-                    );
+            DevTicket updatedTicket = devTicketService.updateDevTicketStatus(devTicket, status, projectMember);
 
-            return new ResponseEntity<>(updatedTicket,HttpStatus.OK);
+            return new ResponseEntity<>(updatedTicket, HttpStatus.OK);
+
+        } catch (AccessDeniedException e) {
+
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.FORBIDDEN);
+
+        } catch (NoSuchElementException e) {
+
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.NOT_FOUND);
+
+        } catch (IllegalArgumentException e) {
+
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.BAD_REQUEST);
+
+        } catch (IllegalStateException e) {
+
+            return new ResponseEntity<>(new ErrorResponse(e.getMessage()), HttpStatus.CONFLICT);
 
         } catch (Exception e) {
+
             log.error("Error updating dev ticket status", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse("Unable to update dev ticket status"));
+            return new ResponseEntity<>(new ErrorResponse("Unable to update dev ticket status"), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -112,10 +125,16 @@ public class DevTicketController {
             DevTicket devTicket = devTicketRepository.findByKey(ticketKey);
 
             if (devTicket == null) {
-                return new ResponseEntity<>(
-                        new ErrorResponse("Dev ticket not found"),
-                        HttpStatus.NOT_FOUND
-                );
+                throw new NoSuchElementException("Dev ticket not found");
+            }
+            // Validate project reference
+            if (devTicket.getProject() == null || devTicket.getProject().getProjectId() == null) {
+                throw new NoSuchElementException("Project reference missing in DevTicket");
+            }
+
+            // Validate feature reference
+            if (devTicket.getFeature() == null || devTicket.getFeature().getFeatureId() == null) {
+                throw new NoSuchElementException("Feature reference missing in DevTicket");
             }
 
             Project project = devTicket.getProject();
@@ -131,7 +150,11 @@ public class DevTicketController {
                             devTicket.getKey()
                     );
 
-            String assignedUser = userRepository.findByUserId(devTicket.getAssignee().getUserId()).getUserName();
+            User assignee = userRepository.findByUserId(devTicket.getAssignee().getUserId());
+            if(assignee == null) {
+                throw new NoSuchElementException("Assigned user not found");
+            }
+            String assignedUser = assignee.getUserName();
 
             DevTicketDetailsResponse devTicketResponse =
                     new DevTicketDetailsResponse(
@@ -170,12 +193,21 @@ public class DevTicketController {
             return new ResponseEntity<>(response, HttpStatus.OK);
 
         } catch (AccessDeniedException e) {
+
             return new ResponseEntity<>(
                     new ErrorResponse(e.getMessage()),
                     HttpStatus.FORBIDDEN
             );
 
+        } catch (NoSuchElementException e) {
+
+            return new ResponseEntity<>(
+                    new ErrorResponse(e.getMessage()),
+                    HttpStatus.NOT_FOUND
+            );
+
         } catch (Exception e) {
+
             log.error("Error fetching DevTicket details", e);
 
             return new ResponseEntity<>(
