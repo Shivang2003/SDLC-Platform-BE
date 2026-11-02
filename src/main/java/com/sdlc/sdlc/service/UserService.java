@@ -39,7 +39,7 @@ public class UserService {
            return true;
        }
        catch (Exception e){
-           throw new RuntimeException("Error creating user: " + e.getMessage());
+           throw new RuntimeException("Error creating new user: " + e.getMessage());
        }
     }
 
