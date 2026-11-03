@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/worklog")
@@ -85,6 +86,42 @@ public class WorklogController {
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch project worklogs");
+        }
+    }
+
+    @PutMapping("/project/{projectId}/update")
+    public ResponseEntity<?> updateWorklogConfig(
+            @PathVariable String projectId,
+            @RequestBody UpdateWorklogConfigRequest request) {
+
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+
+            ProjectWorklogConfigResponse response = worklogService.updateWorklogConfig(projectId, userName, request);
+
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update worklog configuration");
+        }
+    }
+
+    @GetMapping("/project/{projectId}/exists")
+    public ResponseEntity<?> checkWorklogExists(
+            @PathVariable String projectId) {
+
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String userName = authentication.getName();
+            Map<String, Object> response = worklogService.checkWorklogExists(projectId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to check worklog");
         }
     }
 }

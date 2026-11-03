@@ -13,10 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -331,6 +328,99 @@ public class WorklogService {
         response.setTimeZone(config.getTimeZone());
         response.setWorklogs(worklogResponses);
         response.setMissingMembers(missingMembers);
+
+        return response;
+    }
+
+    public ProjectWorklogConfigResponse updateWorklogConfig(String projectId, String userName, UpdateWorklogConfigRequest request) {
+
+        Project project = projectRepository.findByProjectId(projectId);
+
+        if (project == null) {
+            throw new RuntimeException("Project doesn't exist");
+        }
+
+        User user = userRepository.findByUserName(userName);
+
+        if (user == null) {
+            throw new RuntimeException("User doesn't exist");
+        }
+
+        OrganizationMember organizationMember =
+                organizationMemberRepository.findByUserAndOrganization(
+                        user, project.getOrganization());
+
+        if (organizationMember == null) {
+            throw new RuntimeException("User is not a member of this project");
+        }
+
+        Optional<ProjectMember> projectMember = projectMemberRepository.findByProjectAndOrganizationMember(project, organizationMember);
+
+        if (projectMember.isEmpty()) {
+            throw new RuntimeException("User is not a member of this project");
+        }
+
+        ProjectRoles role = projectMember.get().getRole();
+
+        if (!ProjectRoles.ADMIN.equals(role) && !ProjectRoles.OWNER.equals(role)) {
+            throw new RuntimeException("Only Project Admin or Owner can update worklog configuration");
+        }
+
+        if (request == null ||
+                request.getStartTime() == null ||
+                request.getEndTime() == null ||
+                request.getTimeZone() == null ||
+                request.getTimeZone().isBlank()) {
+            throw new RuntimeException("Start time, end time and timezone are required");
+        }
+
+        if (!request.getStartTime().isBefore(request.getEndTime())) {
+            throw new RuntimeException("Start time must be before end time");
+        }
+
+        ZoneId zoneId;
+
+        try {
+            zoneId = ZoneId.of(request.getTimeZone());
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid timezone");
+        }
+
+        ProjectWorklogConfig config =
+                projectWorklogConfigRepository.findByProjectId(projectId)
+                        .orElseThrow(() -> new RuntimeException("Worklog is not initialized for this project"));
+
+        config.setStartTime(request.getStartTime());
+        config.setEndTime(request.getEndTime());
+        config.setTimeZone(zoneId.getId());
+        config.setUpdatedAt(LocalDateTime.now(zoneId));
+
+        ProjectWorklogConfig savedConfig = projectWorklogConfigRepository.save(config);
+
+        ProjectWorklogConfigResponse response = new ProjectWorklogConfigResponse();
+
+        response.setWorkLogId(savedConfig.getWorkLogId());
+        response.setProjectId(savedConfig.getProjectId());
+        response.setStartTime(savedConfig.getStartTime());
+        response.setEndTime(savedConfig.getEndTime());
+        response.setTimeZone(savedConfig.getTimeZone());
+        response.setEnabled(savedConfig.isEnabled());
+        response.setCreatedAt(savedConfig.getCreatedAt());
+        response.setUpdatedAt(savedConfig.getUpdatedAt());
+
+        return response;
+    }
+
+    public Map<String, Object> checkWorklogExists(String projectId) {
+
+        Optional<ProjectWorklogConfig> config = projectWorklogConfigRepository.findByProjectId(projectId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("exists", config.isPresent());
+
+        if (config.isPresent()) {
+            response.put("workLogId", config.get().getWorkLogId());
+            response.put("enabled", config.get().isEnabled());
+        }
 
         return response;
     }
