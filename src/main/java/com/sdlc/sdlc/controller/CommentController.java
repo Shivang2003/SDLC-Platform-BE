@@ -72,7 +72,7 @@ public class CommentController {
 
             Optional<TicketComments> ticketComments = ticketCommentsRepository.findByTicketKey(ticketKey);
             if(ticketComments.isEmpty()){
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+                return new ResponseEntity<>(new ErrorResponse("No one commented on this ticket"),HttpStatus.NOT_FOUND);
             }
             return new ResponseEntity<>(ticketComments, HttpStatus.OK);
         }
